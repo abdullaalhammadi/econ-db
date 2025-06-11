@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, select, insert, update, delete, desc
+from sqlalchemy import create_engine, select, insert, update, delete, desc, func
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from structure import indicators
