@@ -1,135 +1,136 @@
 import { Dataset, DatasetWithVersions, DatasetVersion } from '../types/Dataset';
+import { apiClient, ApiDataset } from './api';
 
-const STORAGE_KEY = 'datasets_with_versions';
+// Convert API dataset to frontend Dataset type
+const convertApiDataset = (apiDataset: ApiDataset): Dataset => ({
+  indicator_id: apiDataset.indicator_id,
+  indicator_name_en: apiDataset.indicator_name_en,
+  indicator_name_ar: apiDataset.indicator_name_ar,
+  added_by: apiDataset.added_by,
+  qc_by: apiDataset.qc_by,
+  added_date: apiDataset.added_date,
+  notes: apiDataset.notes,
+  version: apiDataset.version,
+  created_at: apiDataset.created_at,
+  updated_at: apiDataset.updated_at,
+  uploadedData: apiDataset.uploadedData,
+});
 
-export const saveDataset = (dataset: Dataset, versionNotes?: string): void => {
-  const existingDatasets = getDatasetsWithVersions();
-  const timestamp = new Date().toISOString();
-  
-  // Check if dataset with same ID exists
-  const existingIndex = existingDatasets.findIndex(d => d.indicator_id === dataset.indicator_id);
-  
-  if (existingIndex >= 0) {
-    // Update existing dataset with new version
-    const existing = existingDatasets[existingIndex];
-    const newVersion = existing.current_version + 1;
-    
-    const newDataset: Dataset = {
-      ...dataset,
-      version: newVersion,
-      version_notes: versionNotes,
-      created_at: timestamp,
-      updated_at: timestamp
-    };
-    
-    const newVersionEntry: DatasetVersion = {
-      version: newVersion,
-      dataset: newDataset,
-      created_at: timestamp,
-      version_notes: versionNotes
-    };
-    
-    existing.versions.push(newVersionEntry);
-    existing.current_version = newVersion;
-    existing.latest_dataset = newDataset;
-    existing.latest_dataset.updated_at = timestamp;
-    
-    existingDatasets[existingIndex] = existing;
-  } else {
-    // Create new dataset with version 1
-    const newDataset: Dataset = {
-      ...dataset,
-      version: 1,
-      version_notes: versionNotes || 'Initial version',
-      created_at: timestamp,
-      updated_at: timestamp
-    };
-    
-    const newDatasetWithVersions: DatasetWithVersions = {
+export const saveDataset = async (dataset: Dataset, versionNotes?: string): Promise<void> => {
+  try {
+    const result = await apiClient.createDataset({
       indicator_id: dataset.indicator_id,
-      current_version: 1,
-      latest_dataset: newDataset,
-      versions: [{
-        version: 1,
-        dataset: newDataset,
-        created_at: timestamp,
-        version_notes: versionNotes || 'Initial version'
-      }]
-    };
+      indicator_name_en: dataset.indicator_name_en,
+      indicator_name_ar: dataset.indicator_name_ar,
+      added_by: dataset.added_by,
+      qc_by: dataset.qc_by,
+      added_date: dataset.added_date,
+      notes: dataset.notes,
+      uploadedData: dataset.uploadedData || [],
+    });
     
-    existingDatasets.push(newDatasetWithVersions);
+    console.log(result.message, `Version: ${result.version}`);
+  } catch (error) {
+    console.error('Failed to save dataset:', error);
+    throw error;
   }
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(existingDatasets));
 };
 
-export const getDatasetsWithVersions = (): DatasetWithVersions[] => {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+export const getDatasets = async (): Promise<Dataset[]> => {
+  try {
+    const apiDatasets = await apiClient.getDatasets();
+    return apiDatasets.map(convertApiDataset);
+  } catch (error) {
+    console.error('Failed to fetch datasets:', error);
+    return [];
+  }
 };
 
-export const getDatasets = (): Dataset[] => {
-  const datasetsWithVersions = getDatasetsWithVersions();
-  return datasetsWithVersions.map(d => d.latest_dataset);
+export const deleteDataset = async (indicatorId: string): Promise<void> => {
+  try {
+    await apiClient.deleteDataset(indicatorId);
+  } catch (error) {
+    console.error('Failed to delete dataset:', error);
+    throw error;
+  }
 };
 
-export const deleteDataset = (indicatorId: string): void => {
-  const datasets = getDatasetsWithVersions();
-  const filtered = datasets.filter(d => d.indicator_id !== indicatorId);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+export const getDatasetById = async (indicatorId: string): Promise<Dataset | undefined> => {
+  try {
+    const datasets = await getDatasets();
+    return datasets.find(d => d.indicator_id === indicatorId);
+  } catch (error) {
+    console.error('Failed to fetch dataset:', error);
+    return undefined;
+  }
 };
 
-export const getDatasetById = (indicatorId: string): Dataset | undefined => {
-  const datasets = getDatasetsWithVersions();
-  const found = datasets.find(d => d.indicator_id === indicatorId);
-  return found?.latest_dataset;
-};
+export const getDatasetWithVersions = async (indicatorId: string): Promise<DatasetWithVersions | undefined> => {
+  try {
+    const versions = await apiClient.getDatasetVersions(indicatorId);
+    if (versions.length === 0) return undefined;
 
-export const getDatasetWithVersions = (indicatorId: string): DatasetWithVersions | undefined => {
-  const datasets = getDatasetsWithVersions();
-  return datasets.find(d => d.indicator_id === indicatorId);
-};
-
-export const getDatasetVersion = (indicatorId: string, version: number): Dataset | undefined => {
-  const datasetWithVersions = getDatasetWithVersions(indicatorId);
-  const versionEntry = datasetWithVersions?.versions.find(v => v.version === version);
-  return versionEntry?.dataset;
-};
-
-// Migration function to convert old storage format to new format
-export const migrateOldDatasets = (): void => {
-  const oldStorageKey = 'datasets';
-  const oldData = localStorage.getItem(oldStorageKey);
-  
-  if (oldData && !localStorage.getItem(STORAGE_KEY)) {
-    const oldDatasets: Dataset[] = JSON.parse(oldData);
-    const timestamp = new Date().toISOString();
-    
-    const migratedDatasets: DatasetWithVersions[] = oldDatasets.map(dataset => ({
-      indicator_id: dataset.indicator_id,
-      current_version: 1,
-      latest_dataset: {
-        ...dataset,
-        version: 1,
-        version_notes: 'Migrated from old version',
-        created_at: timestamp,
-        updated_at: timestamp
-      },
-      versions: [{
-        version: 1,
-        dataset: {
-          ...dataset,
-          version: 1,
-          version_notes: 'Migrated from old version',
-          created_at: timestamp,
-          updated_at: timestamp
-        },
-        created_at: timestamp,
-        version_notes: 'Migrated from old version'
-      }]
+    const convertedVersions: DatasetVersion[] = versions.map(v => ({
+      version: v.version,
+      dataset: convertApiDataset(v),
+      created_at: v.created_at,
+      version_notes: `Version ${v.version}`,
     }));
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(migratedDatasets));
-    localStorage.removeItem(oldStorageKey);
+
+    return {
+      indicator_id: indicatorId,
+      current_version: Math.max(...versions.map(v => v.version)),
+      versions: convertedVersions,
+      latest_dataset: convertApiDataset(versions[0]), // First item is latest due to DESC order
+    };
+  } catch (error) {
+    console.error('Failed to fetch dataset versions:', error);
+    return undefined;
   }
+};
+
+export const getDatasetVersion = async (indicatorId: string, version: number): Promise<Dataset | undefined> => {
+  try {
+    const apiDataset = await apiClient.getDatasetVersion(indicatorId, version);
+    return convertApiDataset(apiDataset);
+  } catch (error) {
+    console.error('Failed to fetch dataset version:', error);
+    return undefined;
+  }
+};
+
+export const getDatasetsWithVersions = async (): Promise<DatasetWithVersions[]> => {
+  try {
+    const datasets = await getDatasets();
+    const datasetsWithVersions: DatasetWithVersions[] = [];
+
+    for (const dataset of datasets) {
+      const versions = await apiClient.getDatasetVersions(dataset.indicator_id);
+      const convertedVersions: DatasetVersion[] = versions.map(v => ({
+        version: v.version,
+        dataset: convertApiDataset(v),
+        created_at: v.created_at,
+        version_notes: `Version ${v.version}`,
+      }));
+
+      datasetsWithVersions.push({
+        indicator_id: dataset.indicator_id,
+        current_version: dataset.version,
+        versions: convertedVersions,
+        latest_dataset: dataset,
+      });
+    }
+
+    return datasetsWithVersions;
+  } catch (error) {
+    console.error('Failed to fetch datasets with versions:', error);
+    return [];
+  }
+};
+
+// Migration function - no longer needed with backend
+export const migrateOldDatasets = (): void => {
+  // Remove old localStorage data if it exists
+  localStorage.removeItem('datasets');
+  localStorage.removeItem('datasets_with_versions');
 };

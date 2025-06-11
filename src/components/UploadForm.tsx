@@ -32,19 +32,29 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
   }, []);
 
   useEffect(() => {
-    if (formData.indicator_id) {
-      const existing = getDatasetWithVersions(formData.indicator_id);
-      if (existing) {
-        setExistingDataset(existing.latest_dataset);
-        setIsNewVersion(true);
+    const checkExistingDataset = async () => {
+      if (formData.indicator_id) {
+        try {
+          const existing = await getDatasetWithVersions(formData.indicator_id);
+          if (existing) {
+            setExistingDataset(existing.latest_dataset);
+            setIsNewVersion(true);
+          } else {
+            setExistingDataset(null);
+            setIsNewVersion(false);
+          }
+        } catch (error) {
+          console.error('Error checking existing dataset:', error);
+          setExistingDataset(null);
+          setIsNewVersion(false);
+        }
       } else {
         setExistingDataset(null);
         setIsNewVersion(false);
       }
-    } else {
-      setExistingDataset(null);
-      setIsNewVersion(false);
-    }
+    };
+
+    checkExistingDataset();
   }, [formData.indicator_id]);
 
   const validateForm = (): boolean => {
@@ -100,12 +110,12 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
         ...formData,
         uploadedData,
         fileName: formData.data?.name,
-        version: 1, // Will be overridden by saveDataset
+        version: 1, // Will be overridden by backend
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
-      saveDataset(dataset, versionNotes || undefined);
+      await saveDataset(dataset, versionNotes || undefined);
       
       setShowSuccess(true);
       setTimeout(() => {
@@ -130,7 +140,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
       
     } catch (error) {
       console.error('Upload failed:', error);
-      setErrors({ data: 'Failed to process file' });
+      setErrors({ data: 'Failed to process file. Please check your backend connection.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -150,7 +160,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
           <p className="text-green-600">
             {isNewVersion 
               ? 'Your dataset has been updated with a new version.'
-              : 'Your dataset has been processed and saved.'
+              : 'Your dataset has been processed and saved to the database.'
             }
           </p>
         </div>

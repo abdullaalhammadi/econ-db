@@ -13,17 +13,48 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   const [selectedVersion, setSelectedVersion] = useState(initialDataset.version);
   const [dataset, setDataset] = useState(initialDataset);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const [datasetWithVersions, setDatasetWithVersions] = useState(getDatasetWithVersions(initialDataset.indicator_id));
+  const [versions, setVersions] = useState<Dataset[]>([]);
+  const [loading, setLoading] = useState(false);
   
   const itemsPerPage = 10;
 
   useEffect(() => {
-    const versionData = getDatasetVersion(initialDataset.indicator_id, selectedVersion);
-    if (versionData) {
-      setDataset(versionData);
-    }
-    setCurrentPage(1);
-  }, [selectedVersion, initialDataset.indicator_id]);
+    const loadVersions = async () => {
+      try {
+        const datasetWithVersions = await getDatasetWithVersions(initialDataset.indicator_id);
+        if (datasetWithVersions) {
+          const versionDatasets = datasetWithVersions.versions.map(v => v.dataset);
+          setVersions(versionDatasets);
+        }
+      } catch (error) {
+        console.error('Failed to load versions:', error);
+      }
+    };
+    loadVersions();
+  }, [initialDataset.indicator_id]);
+
+  useEffect(() => {
+    const loadVersionData = async () => {
+      if (selectedVersion !== initialDataset.version) {
+        setLoading(true);
+        try {
+          const versionData = await getDatasetVersion(initialDataset.indicator_id, selectedVersion);
+          if (versionData) {
+            setDataset(versionData);
+          }
+        } catch (error) {
+          console.error('Failed to load version data:', error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setDataset(initialDataset);
+      }
+      setCurrentPage(1);
+    };
+
+    loadVersionData();
+  }, [selectedVersion, initialDataset]);
 
   const data = dataset.uploadedData || [];
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -33,7 +64,6 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   );
 
   const columns = data.length > 0 ? Object.keys(data[0]) : [];
-  const versions = datasetWithVersions?.versions || [];
   const sortedVersions = [...versions].sort((a, b) => b.version - a.version);
 
   const downloadCSV = () => {
@@ -57,6 +87,17 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
     setSelectedVersion(version);
     setShowVersionHistory(false);
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-8">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading version data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-8">

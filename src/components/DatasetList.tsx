@@ -9,21 +9,37 @@ const DatasetList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [showViewer, setShowViewer] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     migrateOldDatasets();
     loadDatasets();
   }, []);
 
-  const loadDatasets = () => {
-    const storedDatasets = getDatasets();
-    setDatasets(storedDatasets);
+  const loadDatasets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const storedDatasets = await getDatasets();
+      setDatasets(storedDatasets);
+    } catch (err) {
+      console.error('Failed to load datasets:', err);
+      setError('Failed to load datasets. Please check your backend connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (indicatorId: string) => {
+  const handleDelete = async (indicatorId: string) => {
     if (window.confirm('Are you sure you want to delete this dataset and all its versions?')) {
-      deleteDataset(indicatorId);
-      loadDatasets();
+      try {
+        await deleteDataset(indicatorId);
+        await loadDatasets();
+      } catch (err) {
+        console.error('Failed to delete dataset:', err);
+        setError('Failed to delete dataset. Please try again.');
+      }
     }
   };
 
@@ -32,10 +48,15 @@ const DatasetList: React.FC = () => {
     setShowViewer(true);
   };
 
-  const getVersionCount = (indicatorId: string): number => {
-    const datasetsWithVersions = getDatasetsWithVersions();
-    const found = datasetsWithVersions.find(d => d.indicator_id === indicatorId);
-    return found?.versions.length || 1;
+  const getVersionCount = async (indicatorId: string): Promise<number> => {
+    try {
+      const datasetsWithVersions = await getDatasetsWithVersions();
+      const found = datasetsWithVersions.find(d => d.indicator_id === indicatorId);
+      return found?.versions.length || 1;
+    } catch (err) {
+      console.error('Failed to get version count:', err);
+      return 1;
+    }
   };
 
   const filteredDatasets = datasets.filter(dataset =>
@@ -54,6 +75,37 @@ const DatasetList: React.FC = () => {
           setSelectedDataset(null);
         }}
       />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-8">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading datasets...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+          <div className="text-red-600 mb-4">
+            <FileText className="h-16 w-16 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Connection Error</h3>
+            <p>{error}</p>
+          </div>
+          <button
+            onClick={loadDatasets}
+            className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -92,89 +144,112 @@ const DatasetList: React.FC = () => {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredDatasets.map((dataset) => {
-            const versionCount = getVersionCount(dataset.indicator_id);
-            return (
-              <div
-                key={dataset.indicator_id}
-                className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300"
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">
-                        {dataset.indicator_name_en}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-2" dir="rtl">
-                        {dataset.indicator_name_ar}
-                      </p>
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                          ID: {dataset.indicator_id}
-                        </div>
-                        {versionCount > 1 && (
-                          <div className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                            <GitBranch className="h-3 w-3 mr-1" />
-                            {versionCount} versions
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <User className="h-4 w-4 mr-2" />
-                      <span>Added by: {dataset.added_by}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      <span>{new Date(dataset.added_date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="h-4 w-4 mr-2" />
-                      <span>v{dataset.version} • {new Date(dataset.updated_at).toLocaleDateString()}</span>
-                    </div>
-                    {dataset.fileName && (
-                      <div className="flex items-center text-sm text-gray-600">
-                        <FileText className="h-4 w-4 mr-2" />
-                        <span className="truncate">{dataset.fileName}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 line-clamp-3">
-                      {dataset.notes}
-                    </p>
-                    {dataset.version_notes && (
-                      <p className="text-xs text-blue-600 mt-1 italic">
-                        Latest: {dataset.version_notes}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleView(dataset)}
-                      className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center"
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Data
-                    </button>
-                    <button
-                      onClick={() => handleDelete(dataset.indicator_id)}
-                      className="bg-red-100 text-red-700 py-2 px-4 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium flex items-center justify-center"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {filteredDatasets.map((dataset) => (
+            <DatasetCard
+              key={dataset.indicator_id}
+              dataset={dataset}
+              onView={handleView}
+              onDelete={handleDelete}
+              getVersionCount={getVersionCount}
+            />
+          ))}
         </div>
       )}
+    </div>
+  );
+};
+
+interface DatasetCardProps {
+  dataset: Dataset;
+  onView: (dataset: Dataset) => void;
+  onDelete: (indicatorId: string) => void;
+  getVersionCount: (indicatorId: string) => Promise<number>;
+}
+
+const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, getVersionCount }) => {
+  const [versionCount, setVersionCount] = useState(1);
+
+  useEffect(() => {
+    const fetchVersionCount = async () => {
+      const count = await getVersionCount(dataset.indicator_id);
+      setVersionCount(count);
+    };
+    fetchVersionCount();
+  }, [dataset.indicator_id, getVersionCount]);
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300">
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">
+              {dataset.indicator_name_en}
+            </h3>
+            <p className="text-sm text-gray-600 mb-2" dir="rtl">
+              {dataset.indicator_name_ar}
+            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                ID: {dataset.indicator_id}
+              </div>
+              {versionCount > 1 && (
+                <div className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                  <GitBranch className="h-3 w-3 mr-1" />
+                  {versionCount} versions
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center text-sm text-gray-600">
+            <User className="h-4 w-4 mr-2" />
+            <span>Added by: {dataset.added_by}</span>
+          </div>
+          <div className="flex items-center text-sm text-gray-600">
+            <Calendar className="h-4 w-4 mr-2" />
+            <span>{new Date(dataset.added_date).toLocaleDateString()}</span>
+          </div>
+          <div className="flex items-center text-sm text-gray-600">
+            <Clock className="h-4 w-4 mr-2" />
+            <span>v{dataset.version} • {new Date(dataset.updated_at).toLocaleDateString()}</span>
+          </div>
+          {dataset.fileName && (
+            <div className="flex items-center text-sm text-gray-600">
+              <FileText className="h-4 w-4 mr-2" />
+              <span className="truncate">{dataset.fileName}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <p className="text-sm text-gray-600 line-clamp-3">
+            {dataset.notes}
+          </p>
+          {dataset.version_notes && (
+            <p className="text-xs text-blue-600 mt-1 italic">
+              Latest: {dataset.version_notes}
+            </p>
+          )}
+        </div>
+
+        <div className="flex space-x-2">
+          <button
+            onClick={() => onView(dataset)}
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Data
+          </button>
+          <button
+            onClick={() => onDelete(dataset.indicator_id)}
+            className="bg-red-100 text-red-700 py-2 px-4 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium flex items-center justify-center"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
