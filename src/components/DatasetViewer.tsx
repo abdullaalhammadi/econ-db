@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Download, FileText, User, Calendar, MessageSquare, Clock, GitBranch, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Download, FileText, User, Calendar, MessageSquare, Clock, GitBranch, ChevronDown, ChevronUp, Copy, Link, Check } from 'lucide-react';
 import { Dataset } from '../types/Dataset';
 import { getDatasetWithVersions, getDatasetVersion } from '../utils/storage';
 
@@ -15,6 +15,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [versions, setVersions] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   
   const itemsPerPage = 10;
 
@@ -81,6 +82,28 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
     a.download = `${dataset.indicator_id}_v${dataset.version}_data.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const copyApiUrl = async () => {
+    const baseUrl = window.location.origin;
+    const apiUrl = `${baseUrl}/api/indicators/${dataset.indicator_id}/versions/${dataset.version}`;
+    
+    try {
+      await navigator.clipboard.writeText(apiUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = apiUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
   };
 
   const handleVersionChange = (version: number) => {
@@ -226,13 +249,31 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
                 <span className="font-medium">{dataset.fileName}</span>
                 <span className="ml-2 text-sm">({data.length} rows)</span>
               </div>
-              <button
-                onClick={downloadCSV}
-                className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download CSV
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyApiUrl}
+                  className="bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center"
+                >
+                  {copiedUrl ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Link className="h-4 w-4 mr-2" />
+                      Copy API URL
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={downloadCSV}
+                  className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download CSV
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -241,8 +282,21 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
       {data.length > 0 ? (
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Dataset Contents</h2>
-            <p className="text-sm text-gray-600 mt-1">Version {dataset.version} data</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Dataset Contents</h2>
+                <p className="text-sm text-gray-600 mt-1">Version {dataset.version} data</p>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <Link className="h-4 w-4 mr-1" />
+                  <span>REST API Available</span>
+                </div>
+                <div className="bg-gray-100 px-3 py-1 rounded-full font-mono text-xs">
+                  GET /api/indicators/{dataset.indicator_id}/versions/{dataset.version}
+                </div>
+              </div>
+            </div>
           </div>
           
           <div className="overflow-x-auto">
