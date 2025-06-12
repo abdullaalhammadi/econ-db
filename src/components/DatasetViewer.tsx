@@ -67,21 +67,46 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   const columns = data.length > 0 ? Object.keys(data[0]) : [];
   const sortedVersions = [...versions].sort((a, b) => b.version - a.version);
 
-  const downloadCSV = () => {
+  const convertJsonToCsv = (jsonData: any[]): string => {
+    if (jsonData.length === 0) return '';
+    
+    const headers = Object.keys(jsonData[0]);
+    const csvHeaders = headers.join(',');
+    
+    const csvRows = jsonData.map(row => 
+      headers.map(header => {
+        const value = row[header];
+        // Handle values that contain commas, quotes, or newlines
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value || '';
+      }).join(',')
+    );
+    
+    return [csvHeaders, ...csvRows].join('\n');
+  };
+
+  const downloadCSV = async () => {
     if (data.length === 0) return;
 
-    const csvContent = [
-      columns.join(','),
-      ...data.map(row => columns.map(col => `"${row[col] || ''}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${dataset.indicator_id}_v${dataset.version}_data.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    try {
+      // Convert JSON data to CSV
+      const csvContent = convertJsonToCsv(data);
+      
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${dataset.indicator_id}_v${dataset.version}_data.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download CSV:', error);
+    }
   };
 
   const copyApiUrl = async () => {
@@ -288,10 +313,16 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
                 <p className="text-sm text-gray-600 mt-1">Version {dataset.version} data</p>
               </div>
               <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center">
+                <button
+                  onClick={copyApiUrl}
+                  className="flex items-center hover:text-purple-600 transition-colors cursor-pointer"
+                  title="Click to copy API URL"
+                >
                   <Link className="h-4 w-4 mr-1" />
-                  <span>REST API Available</span>
-                </div>
+                  <span className="hover:underline">
+                    {copiedUrl ? 'API URL Copied!' : 'REST API Available'}
+                  </span>
+                </button>
                 <div className="bg-gray-100 px-3 py-1 rounded-full font-mono text-xs">
                   GET /api/indicators/{dataset.indicator_id}/versions/{dataset.version}
                 </div>
