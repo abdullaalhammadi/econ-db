@@ -13,7 +13,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-2">
             <Database className="h-8 w-8 text-blue-600" />
-            <h1 className="text-xl font-bold text-gray-900">Economical Indicator Database</h1>
+            <h1 className="text-xl font-bold text-gray-900">Economic Indicator Database</h1>
           </div>
           
           <nav className="flex space-x-1">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Download, FileText, User, Calendar, MessageSquare, Clock, GitBranch, ChevronDown, ChevronUp, Copy, Link, Check } from 'lucide-react';
+import { ArrowLeft, Download, FileText, User, Calendar, MessageSquare, Clock, GitBranch, ChevronDown, ChevronUp, Link, Check } from 'lucide-react';
 import { Dataset } from '../types/Dataset';
 import { getDatasetWithVersions, getDatasetVersion } from '../utils/storage';
 
@@ -111,7 +111,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
 
   const copyApiUrl = async () => {
     const baseUrl = window.location.origin;
-    const apiUrl = `${baseUrl}/api/indicators/${dataset.indicator_id}/versions/${dataset.version}`;
+    const apiUrl = `${baseUrl}/api/indicators/${dataset.indicator_id}/versions/${dataset.version}/data`;
     
     try {
       await navigator.clipboard.writeText(apiUrl);
@@ -281,7 +281,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
                 <div className="flex gap-2">
                   <button
                     onClick={copyApiUrl}
-                    className="bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center"
+                    className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center"
                   >
                     {copiedUrl ? (
                       <>

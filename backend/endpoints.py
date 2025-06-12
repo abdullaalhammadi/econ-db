@@ -124,6 +124,27 @@ def get_indicator_version(indicator_id, version):
         else:
             return jsonify({'error': 'Version not found'}), 404
 
+@app.route('/indicators/<string:indicator_id>/versions/<int:version>/data', methods=['GET'])
+def get_indicator_version_data(indicator_id, version):
+    """Get only the uploadedData for a specific version of an indicator"""
+    with engine.connect() as conn:
+        stmt = select(indicators.c.data).where(
+            (indicators.c.indicator_id == indicator_id) &
+            (indicators.c.version_number == version)
+        )
+
+        res = conn.execute(stmt)
+        row = res.first()
+
+        if row and row.data:
+            try:
+                return jsonify(json.loads(row.data))
+            except json.JSONDecodeError:
+                return jsonify({'error': 'Invalid JSON format in data field'}), 500
+        else:
+            return jsonify([])  # Return empty array if no data or version not found
+
+
 @app.route('/indicators', methods=['POST'])
 def create_indicator():
     """Create a new indicator or add a new version"""
