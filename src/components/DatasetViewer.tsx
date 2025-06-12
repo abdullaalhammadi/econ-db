@@ -267,37 +267,42 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
             )}
           </div>
 
-          {dataset.fileName && (
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-              <div className="flex items-center text-gray-600">
-                <FileText className="h-5 w-5 mr-2" />
-                <span className="font-medium">{dataset.fileName}</span>
-                <span className="ml-2 text-sm">({data.length} rows)</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={copyApiUrl}
-                  className="bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center"
-                >
-                  {copiedUrl ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Link className="h-4 w-4 mr-2" />
-                      Copy API URL
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={downloadCSV}
-                  className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download CSV
-                </button>
+          {/* Always show data info and action buttons when data exists */}
+          {data.length > 0 && (
+            <div className="pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center text-gray-600">
+                  <FileText className="h-5 w-5 mr-2" />
+                  <span className="font-medium">
+                    {dataset.fileName || `${dataset.indicator_id}_data`}
+                  </span>
+                  <span className="ml-2 text-sm">({data.length} rows)</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyApiUrl}
+                    className="bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center"
+                  >
+                    {copiedUrl ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Link className="h-4 w-4 mr-2" />
+                        Copy API URL
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={downloadCSV}
+                    className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download CSV
+                  </button>
+                </div>
               </div>
             </div>
           )}
