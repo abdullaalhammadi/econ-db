@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle2, Clock, Info } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { Dataset, FormErrors } from '../types/Dataset';
 import { saveDataset, getDatasetWithVersions, migrateOldDatasets } from '../utils/storage';
 import { parseCSV, readFileAsText } from '../utils/fileParser';
+import { getStatus } from '../utils/api';
+import { DataRow } from '../types/Dataset';
 
 interface UploadFormProps {
   onUploadSuccess: () => void;
@@ -29,6 +31,20 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
 
   useEffect(() => {
     migrateOldDatasets();
+    
+    // Auto-populate "added by" field with current user
+    const getCurrentUser = async () => {
+      try {
+        const status = await getStatus();
+        if (status.logged_in && status.user) {
+            setFormData(prev => ({ ...prev, added_by: status.user?.username || '' }));
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+    }
+  };
+
+    getCurrentUser();
   }, []);
 
   useEffect(() => {
@@ -97,7 +113,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
     setIsSubmitting(true);
     
     try {
-      let uploadedData: any[] = [];
+
+      let uploadedData: DataRow[] = [];
       
       if (formData.data) {
         if (formData.data.name.endsWith('.csv')) {
@@ -123,17 +140,34 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
         onUploadSuccess();
       }, 2000);
 
-      // Reset form
-      setFormData({
-        indicator_id: '',
-        indicator_name_en: '',
-        indicator_name_ar: '',
-        added_by: '',
-        qc_by: '',
-        added_date: new Date().toISOString().split('T')[0],
-        notes: '',
-        data: undefined,
-      });
+      // Reset form but keep current user in "added by"
+      try {
+        const status = await getStatus();
+        const currentUser = status.logged_in && status.user ? status.user.username : '';
+        
+        setFormData({
+          indicator_id: '',
+          indicator_name_en: '',
+          indicator_name_ar: '',
+          added_by: currentUser,
+          qc_by: '',
+          added_date: new Date().toISOString().split('T')[0],
+          notes: '',
+          data: undefined,
+        });
+      } catch (error) {
+        console.error('Error getting user status during form reset:', error);
+        setFormData({
+          indicator_id: '',
+          indicator_name_en: '',
+          indicator_name_ar: '',
+          added_by: '',
+          qc_by: '',
+          added_date: new Date().toISOString().split('T')[0],
+          notes: '',
+          data: undefined,
+        });
+      }
       setVersionNotes('');
       setExistingDataset(null);
       setIsNewVersion(false);
@@ -282,9 +316,9 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
               <input
                 type="text"
                 value={formData.added_by}
-                onChange={(e) => setFormData({ ...formData, added_by: e.target.value })}
-                className={errors.added_by ? errorInputClasses : inputClasses}
-                placeholder="Enter your name"
+                readOnly
+                className={`${errors.added_by ? errorInputClasses : inputClasses} bg-gray-50 cursor-not-allowed`}
+                placeholder="Automatically filled with current user"
               />
               {errors.added_by && (
                 <p className="text-red-600 text-sm mt-1 flex items-center">

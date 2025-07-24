@@ -1,13 +1,97 @@
 from sqlalchemy import create_engine, select, insert, update, delete, desc, func
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from structure import indicators
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from structure import indicators, users
 import json
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend connection
+app.secret_key = 'super secret key'  # Change this!
+CORS(app, supports_credentials=True)  # Enable CORS for frontend connection
 engine = create_engine("sqlite:///structure.db")
+
+# Flask-Login setup
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
+
+@login_manager.user_loader
+def load_user(user_id):
+    with engine.connect() as conn:
+        stmt = select(users).where(users.c.id == user_id)
+        res = conn.execute(stmt)
+        user = res.first()
+        if user:
+            return User(id=user.id, username=user.username)
+        return None
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required'}), 400
+
+    with engine.connect() as conn:
+        # Check if user already exists
+        stmt = select(users).where(users.c.username == username)
+        res = conn.execute(stmt)
+        if res.first():
+            return jsonify({'error': 'Username already exists'}), 400
+
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        
+        insert_stmt = insert(users).values(
+            username=username,
+            password=hashed_password
+        )
+        conn.execute(insert_stmt)
+        conn.commit()
+
+        return jsonify({'message': 'User registered successfully'}), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required'}), 400
+
+    with engine.connect() as conn:
+        stmt = select(users).where(users.c.username == username)
+        res = conn.execute(stmt)
+        user_data = res.first()
+
+        if user_data and check_password_hash(user_data.password, password):
+            user = User(id=user_data.id, username=user_data.username)
+            login_user(user)
+            return jsonify({'message': 'Logged in successfully'})
+        
+        return jsonify({'error': 'Invalid username or password'}), 401
+
+@app.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    logout_user()
+    return jsonify({'message': 'Logged out successfully'})
+
+@app.route('/status', methods=['GET'])
+def status():
+    if current_user.is_authenticated:
+        return jsonify({'logged_in': True, 'user': {'username': current_user.username}})
+    return jsonify({'logged_in': False})
+
 
 @app.route('/indicators', methods=['GET'])
 def get_indicators():
@@ -146,6 +230,7 @@ def get_indicator_version_data(indicator_id, version):
 
 
 @app.route('/indicators', methods=['POST'])
+@login_required
 def create_indicator():
     """Create a new indicator or add a new version"""
     data = request.get_json()
@@ -168,7 +253,7 @@ def create_indicator():
             version_number=new_version,
             indicator_name_en=data['indicator_name_en'],
             indicator_name_ar=data['indicator_name_ar'],
-            added_by=data['added_by'],
+            added_by=current_user.username,
             qc_by=data['qc_by'],
             added_date=datetime.fromisoformat(data['added_date']),
             notes=data['notes'],
@@ -185,6 +270,7 @@ def create_indicator():
         })
 
 @app.route('/indicators/<string:indicator_id>', methods=['DELETE'])
+@login_required
 def delete_indicator(indicator_id):
     """Delete all versions of an indicator"""
     with engine.connect() as conn:

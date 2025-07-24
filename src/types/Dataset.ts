@@ -1,3 +1,5 @@
+export type DataRow = { [key: string]: string | number | boolean };
+
 export interface Dataset {
   indicator_id: string;
   indicator_name_en: string;
@@ -7,7 +9,7 @@ export interface Dataset {
   added_date: string;
   notes: string;
   data?: File;
-  uploadedData?: any[];
+  uploadedData?: DataRow[];
   fileName?: string;
   version: number;
   version_notes?: string;

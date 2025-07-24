@@ -1,5 +1,6 @@
 import { Dataset, DatasetWithVersions, DatasetVersion } from '../types/Dataset';
-import { apiClient, ApiDataset } from './api';
+import * as apiClient from './api';
+import { ApiDataset } from '../types/Dataset';
 
 // Convert API dataset to frontend Dataset type
 const convertApiDataset = (apiDataset: ApiDataset): Dataset => ({

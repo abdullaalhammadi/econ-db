@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Download, FileText, User, Calendar, MessageSquare, Clock, GitBranch, ChevronDown, ChevronUp, Link, Check } from 'lucide-react';
 import { Dataset } from '../types/Dataset';
 import { getDatasetWithVersions, getDatasetVersion } from '../utils/storage';
+import { DataRow } from '../types/Dataset';
+
 
 interface DatasetViewerProps {
   dataset: Dataset;
@@ -67,7 +69,8 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   const columns = data.length > 0 ? Object.keys(data[0]) : [];
   const sortedVersions = [...versions].sort((a, b) => b.version - a.version);
 
-  const convertJsonToCsv = (jsonData: any[]): string => {
+
+  const convertJsonToCsv = (jsonData: DataRow[]): string => {
     if (jsonData.length === 0) return '';
     
     const headers = Object.keys(jsonData[0]);
