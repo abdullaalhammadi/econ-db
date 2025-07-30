@@ -32,6 +32,16 @@ def load_user(user_id):
             return User(id=user.id, username=user.username)
         return None
 
+
+@app.route('/test', methods=['GET'])
+def test():
+    return jsonify({
+        'status': 'ok',
+        'message': 'API is running',
+        'user_authenticated': current_user.is_authenticated,
+        'current_user': current_user.username if current_user.is_authenticated else None
+    })
+
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
