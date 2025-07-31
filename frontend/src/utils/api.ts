@@ -1,6 +1,6 @@
 import { ApiDataset } from '../types/Dataset';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://104.207.139.120:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.repoten.com/econdb';
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {

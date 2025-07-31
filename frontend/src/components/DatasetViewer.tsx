@@ -114,7 +114,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
 
   const copyApiUrl = async () => {
     const baseUrl = window.location.origin;
-    const apiUrl = `${baseUrl}/api/indicators/${dataset.indicator_id}/versions/${dataset.version}/data`;
+    const apiUrl = `${baseUrl}/indicators/${dataset.indicator_id}/versions/${dataset.version}/data`;
     
     try {
       await navigator.clipboard.writeText(apiUrl);
@@ -332,7 +332,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
                   </span>
                 </button>
                 <div className="bg-gray-100 px-3 py-1 rounded-full font-mono text-xs">
-                  GET /api/indicators/{dataset.indicator_id}/versions/{dataset.version}
+                  GET /indicators/{dataset.indicator_id}/versions/{dataset.version}
                 </div>
               </div>
             </div>
