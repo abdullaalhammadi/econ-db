@@ -1,4 +1,4 @@
-import { ApiDataset } from '../types/Dataset';
+import { Dataset } from '../types/Dataset';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.repoten.com/econdb';
 
@@ -25,19 +25,19 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   }
 }
 
-export async function getDatasets(): Promise<ApiDataset[]> {
-  return request<ApiDataset[]>('/indicators');
+export async function getDatasets(): Promise<Dataset[]> {
+  return request<Dataset[]>('/indicators');
 }
 
-export async function getDatasetVersions(indicatorId: string): Promise<ApiDataset[]> {
-  return request<ApiDataset[]>(`/indicators/${indicatorId}/versions`);
+export async function getDatasetVersions(indicatorId: string): Promise<Dataset[]> {
+  return request<Dataset[]>(`/indicators/${indicatorId}/versions`);
 }
 
-export async function getDatasetVersion(indicatorId: string, version: number): Promise<ApiDataset> {
-  return request<ApiDataset>(`/indicators/${indicatorId}/versions/${version}`);
+export async function getDatasetVersion(indicatorId: string, version: number): Promise<Dataset> {
+  return request<Dataset>(`/indicators/${indicatorId}/versions/${version}`);
 }
 
-export async function createDataset(dataset: Omit<ApiDataset, 'version' | 'created_at' | 'updated_at'>): Promise<{ message: string; version: number; is_new_version: boolean }> {
+export async function createDataset(dataset: Omit<Dataset, 'version' | 'created_at' | 'updated_at'>): Promise<{ message: string; version: number; is_new_version: boolean }> {
   return request('/indicators', {
     method: 'POST',
     body: JSON.stringify(dataset),

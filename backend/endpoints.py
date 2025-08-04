@@ -230,13 +230,14 @@ def get_indicator_version_data(indicator_id, version):
         res = conn.execute(stmt)
         row = res.first()
 
-        if row and row.data:
-            try:
-                return jsonify(json.loads(row.data))
-            except json.JSONDecodeError:
-                return jsonify({'error': 'Invalid JSON format in data field'}), 500
-        else:
-            return jsonify([])  # Return empty array if no data or version not found
+        return row, 200
+        # if row and row.data:
+        #     try:
+        #         return jsonify(json.loads(row.data))
+        #     except json.JSONDecodeError:
+        #         return jsonify({'error': 'Invalid JSON format in data field'}), 500
+        # else:
+        #     return jsonify([])  # Return empty array if no data or version not found
 
 
 @app.route('/indicators', methods=['POST'])

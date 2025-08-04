@@ -113,7 +113,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   };
 
   const copyApiUrl = async () => {
-    const baseUrl = window.location.origin;
+    const baseUrl = 'https://api.repoten.com/econdb';
     const apiUrl = `${baseUrl}/indicators/${dataset.indicator_id}/versions/${dataset.version}/data`;
     
     try {
