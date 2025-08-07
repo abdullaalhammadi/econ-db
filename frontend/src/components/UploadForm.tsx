@@ -3,7 +3,7 @@ import { Upload, FileText, AlertCircle, CheckCircle2, Info } from 'lucide-react'
 import { Dataset, FormErrors } from '../types/Dataset';
 import { saveDataset, getDatasetWithVersions, migrateOldDatasets } from '../utils/storage';
 import { parseCSV, readFileAsText } from '../utils/fileParser';
-import { getStatus } from '../utils/api';
+import { getStatus, getNextIndicatorId } from '../utils/api';
 import { DataRow } from '../types/Dataset';
 
 interface UploadFormProps {
@@ -32,19 +32,25 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
   useEffect(() => {
     migrateOldDatasets();
     
-    // Auto-populate "added by" field with current user
-    const getCurrentUser = async () => {
+    // Auto-populate "added by" field with current user and generate indicator ID
+    const initializeForm = async () => {
       try {
-        const status = await getStatus();
-        if (status.logged_in && status.user) {
-            setFormData(prev => ({ ...prev, added_by: status.user?.username || '' }));
+        const [status, nextId] = await Promise.all([
+          getStatus(),
+          getNextIndicatorId()
+        ]);
+        
+        setFormData(prev => ({
+          ...prev,
+          added_by: status.logged_in && status.user ? status.user.username : '',
+          indicator_id: nextId
+        }));
+      } catch (error) {
+        console.error('Error initializing form:', error);
       }
-    } catch (error) {
-      console.error('Error fetching current user:', error);
-    }
-  };
+    };
 
-    getCurrentUser();
+    initializeForm();
   }, []);
 
   useEffect(() => {
@@ -76,10 +82,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.indicator_id) newErrors.indicator_id = 'Indicator ID is required';
     if (!formData.indicator_name_en) newErrors.indicator_name_en = 'English name is required';
     if (!formData.indicator_name_ar) newErrors.indicator_name_ar = 'Arabic name is required';
-    if (!formData.added_by) newErrors.added_by = 'Added by field is required';
     if (!formData.qc_by) newErrors.qc_by = 'QC by field is required';
     if (!formData.added_date) newErrors.added_date = 'Date is required';
     if (!formData.notes) newErrors.notes = 'Notes are required';
@@ -140,13 +144,16 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
         onUploadSuccess();
       }, 2000);
 
-      // Reset form but keep current user in "added by"
+      // Reset form but keep current user in "added by" and generate new indicator ID
       try {
-        const status = await getStatus();
+        const [status, nextId] = await Promise.all([
+          getStatus(),
+          getNextIndicatorId()
+        ]);
         const currentUser = status.logged_in && status.user ? status.user.username : '';
         
         setFormData({
-          indicator_id: '',
+          indicator_id: nextId,
           indicator_name_en: '',
           indicator_name_ar: '',
           added_by: currentUser,
@@ -156,9 +163,9 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
           data: undefined,
         });
       } catch (error) {
-        console.error('Error getting user status during form reset:', error);
+        console.error('Error resetting form:', error);
         setFormData({
-          indicator_id: '',
+          indicator_id: 'IND001',
           indicator_name_en: '',
           indicator_name_ar: '',
           added_by: '',
@@ -233,21 +240,15 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Indicator ID *
+                Indicator ID
               </label>
               <input
                 type="text"
                 value={formData.indicator_id}
-                onChange={(e) => setFormData({ ...formData, indicator_id: e.target.value })}
-                className={errors.indicator_id ? errorInputClasses : inputClasses}
-                placeholder="Enter unique indicator ID"
+                readOnly
+                className={`${inputClasses} bg-gray-50 cursor-not-allowed`}
+                placeholder="Auto-generated serial number"
               />
-              {errors.indicator_id && (
-                <p className="text-red-600 text-sm mt-1 flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {errors.indicator_id}
-                </p>
-              )}
             </div>
 
             <div>

@@ -74,3 +74,19 @@ export async function logout() {
 export async function getStatus(): Promise<{ logged_in: boolean; user?: { username: string } }> {
   return request('/status');
 }
+
+export async function getNextIndicatorId(): Promise<string> {
+  try {
+    const datasets = await getDatasets();
+    const maxId = datasets.length > 0 
+      ? Math.max(...datasets.map(d => {
+          const match = d.indicator_id.match(/^IND(\d+)$/);
+          return match ? parseInt(match[1]) : 0;
+        }))
+      : 0;
+    return `IND${String(maxId + 1).padStart(3, '0')}`;
+  } catch (error) {
+    console.error('Failed to generate next indicator ID:', error);
+    return 'IND001';
+  }
+}
