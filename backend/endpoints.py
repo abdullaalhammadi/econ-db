@@ -9,7 +9,11 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'super secret key'  # Change this!
-CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev', 'http://localhost:5173', 'http://localhost:3000'])  # Enable CORS for frontend connection
+
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
+
+CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev', 'http://localhost:5173', 'http://localhost:3000'], allow_headers=['Content-Type', 'Authorization'])  # Enable CORS for frontend connection
 engine = create_engine("sqlite:///structure.db")
 
 # Flask-Login setup
