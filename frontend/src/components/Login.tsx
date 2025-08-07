@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { login } from '../utils/api';
 
-const Login: React.FC = () => {
+interface LoginProps {
+  onLoginSuccess?: () => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+    const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -10,7 +16,8 @@ const Login: React.FC = () => {
         e.preventDefault();
         try {
             await login(username, password);
-            window.location.href = '/';
+            onLoginSuccess?.();
+            navigate('/');
         } catch {
             setError('Invalid credentials');
         }

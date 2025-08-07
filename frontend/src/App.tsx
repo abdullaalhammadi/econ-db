@@ -28,7 +28,7 @@ const App: React.FC = () => {
         <Navigation loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
         <main className="py-8">
           <Routes>
-            <Route path="/login" element={!loggedIn ? <Login /> : <Navigate to="/" />} />
+            <Route path="/login" element={!loggedIn ? <Login onLoginSuccess={() => setLoggedIn(true)} /> : <Navigate to="/" />} />
             <Route path="/register" element={!loggedIn ? <Register /> : <Navigate to="/" />} />
             
             <Route 

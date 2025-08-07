@@ -238,7 +238,6 @@ def get_indicator_version_data(indicator_id, version):
         else:
             return jsonify([])  # Return empty array if no data or version not found
 
-
 @app.route('/indicators', methods=['POST'])
 @login_required
 def create_indicator():
