@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12.6-slim
 
 WORKDIR /app
 
@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["python", "endpoints.py"]
+CMD ["python3", "endpoints.py"]
