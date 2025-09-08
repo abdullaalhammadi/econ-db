@@ -20,6 +20,7 @@ oracle_connection_string = f"oracle+oracledb://{ORACLE_USERNAME}:{ORACLE_PASSWOR
 engine = create_engine(oracle_connection_string)
 metadata_obj = MetaData()
 
+
 indicators = Table(
     "indicators", metadata_obj,
     Column("indicator_id", String(255)),  # Oracle requires explicit length for varchar
