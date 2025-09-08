@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from structure import indicators, users
+from structure import indicators, users, engine
 import json
 from datetime import datetime
 
@@ -15,7 +15,6 @@ app.config['SESSION_COOKIE_SECURE'] = True
 
 CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev', 'http://localhost:5173', 'http://localhost:3000'], allow_headers=['Content-Type', 'Authorization'])  # Enable CORS for frontend connection
 # Import the engine from structure.py to use the same Oracle connection
-from structure import engine
 
 # Flask-Login setup
 login_manager = LoginManager()
@@ -50,6 +49,27 @@ def test():
         'user_authenticated': current_user.is_authenticated,
         'current_user': current_user.username if current_user.is_authenticated else None
     })
+
+@app.route('/test/db', methods=['GET'])
+def test_db():
+    """Test database connection"""
+    try:
+        with engine.connect() as conn:
+            # Select all from users table
+            users_result = conn.execute(select(users))
+            users_data = [dict(row._mapping) for row in users_result.fetchall()]
+            
+            return jsonify({
+                'status': 'ok',
+                'message': 'Database connection successful',
+                'users': users_data
+            })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database connection failed',
+            'error': str(e)
+        }), 500
 
 @app.route('/register', methods=['POST'])
 def register():

@@ -31,14 +31,16 @@ indicators = Table(
     Column("added_date", DateTime),
     Column("notes", Text),
     Column("data", Text),  # JSON string of the uploaded data
-    PrimaryKeyConstraint("indicator_id", "version_number")
+    PrimaryKeyConstraint("indicator_id", "version_number"),
+    schema="APP_DEV"
 )
 
 users = Table(
     "users", metadata_obj,
     Column("id", Integer, primary_key=True),
-    Column("username", String(100), unique=True, nullable=False),
-    Column("password", String(255), nullable=False)
+    Column("username", String(255), unique=True, nullable=False),
+    Column("password", String(255), nullable=False),
+    schema="APP_DEV"
 )
 
 metadata_obj.create_all(engine)
