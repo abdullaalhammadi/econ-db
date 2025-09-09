@@ -89,4 +89,4 @@ jobs:
             
             # Debug - Show environment variables inside the container
             echo "=== Container Environment Variables ==="
-            docker exec econ-db-backend printenv | sort
+            docker exec econ-db-backend sh -c 'printenv | grep -E "^(ORACLE_|PATH|HOME|USER)" | sort'
