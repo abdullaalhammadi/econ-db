@@ -11,13 +11,13 @@ for var in oracle_vars:
 print(f"\n=== Connection String ===")
 print(f"Engine URL: {engine.url}")
 
-print(f"\n=== Database Connection Test ===")
-try:
-    with engine.connect() as conn:
-        print("✓ Database connection successful")
-        result = conn.execute(select(users))
-        users_data = result.fetchall()
-        print(f"Users table data: {users_data}")
-except Exception as e:
-    print(f"✗ Database connection failed: {e}")
-    print(f"Error type: {type(e).__name__}")
+# print(f"\n=== Database Connection Test ===")
+# try:
+#     with engine.connect() as conn:
+#         print("✓ Database connection successful")
+#         result = conn.execute(select(users))
+#         users_data = result.fetchall()
+#         print(f"Users table data: {users_data}")
+# except Exception as e:
+#     print(f"✗ Database connection failed: {e}")
+#     print(f"Error type: {type(e).__name__}")
