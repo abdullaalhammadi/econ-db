@@ -24,3 +24,5 @@ print(f"Password: {'*' * len(password) if password != 'NOT SET' else 'NOT SET'}"
 # Build connection string
 oracle_connection_string = f"oracle+cx_oracle://{username}:{password}@{host}:{port}/{service_name}"
 print(f"\nManual connection string: {oracle_connection_string}")
+
+f"oracle+oracledb://{username}:{password}@{host}:{port}/?service_name={service_name}"
