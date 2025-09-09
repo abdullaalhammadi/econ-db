@@ -86,3 +86,7 @@ jobs:
               -e ORACLE_USERNAME="${{ secrets.ORACLE_USERNAME }}" \
               -e ORACLE_PASSWORD="${{ secrets.ORACLE_PASSWORD }}" \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            
+            # Debug - Show environment variables inside the container
+            echo "=== Container Environment Variables ==="
+            docker exec econ-db-backend printenv | sort
