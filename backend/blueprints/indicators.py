@@ -186,6 +186,38 @@ def get_indicator_version(indicator_id, version):
         else:
             return jsonify({'error': 'Version not found'}), 404
 
+@indicators_bp.route('/<string:indicator_id>/latest', methods=['GET'])
+def get_latest_indicator(indicator_id):
+    """Get the latest approved version of an indicator"""
+    with engine.connect() as conn:
+        stmt = select(indicators).where(
+            (indicators.c.indicator_id == indicator_id) &
+            (indicators.c.approval_status == 'approved')
+        ).order_by(desc(indicators.c.version_number)).limit(1)
+        
+        res = conn.execute(stmt)
+        row = res.mappings().first()
+        
+        if row:
+            dataset = {
+                'indicator_id': row['indicator_id'],
+                'indicator_name_en': row['indicator_name_en'],
+                'indicator_name_ar': row['indicator_name_ar'],
+                'added_by': row['added_by'],
+                'source': row['source'],
+                'domain': row['domain'],
+                'qc_by': row['qc_by'],
+                'added_date': row['added_date'].isoformat() if row['added_date'] else '',
+                'notes': row['notes'],
+                'version': row['version_number'],
+                'created_at': row['added_date'].isoformat() if row['added_date'] else '',
+                'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
+                'uploadedData': json.loads(row['data']) if row['data'] else []
+            }
+            return jsonify(dataset)
+        else:
+            return jsonify({'error': 'Indicator not found'}), 404
+
 @indicators_bp.route('/<string:indicator_id>/versions/<int:version>/data', methods=['GET'])
 def get_indicator_version_data(indicator_id, version):
     """Get only the uploadedData for a specific version of an indicator"""

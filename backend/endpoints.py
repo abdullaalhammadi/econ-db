@@ -11,12 +11,11 @@ from blueprints.indicators import indicators_bp
 from blueprints.utils import utils_bp
 
 app = Flask(__name__)
-app.secret_key = 'super secret key'  # Change this!
 
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
 
-CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev', 'http://localhost:5173', 'http://localhost:3000'], allow_headers=['Content-Type', 'Authorization'])  # Enable CORS for frontend connection
+CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev'], allow_headers=['Content-Type', 'Authorization'])  # Enable CORS for frontend connection
 
 # Flask-Login setup
 login_manager = LoginManager()
@@ -59,4 +58,4 @@ app.register_blueprint(indicators_bp)
 app.register_blueprint(utils_bp)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    app.run(port=5000, host='0.0.0.0')
