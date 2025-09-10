@@ -8,6 +8,8 @@ export interface Dataset {
   qc_by: string;
   added_date: string;
   notes: string;
+  source?: string;
+  domain?: string;
   data?: File;
   uploadedData?: DataRow[];
   fileName?: string;
@@ -15,6 +17,10 @@ export interface Dataset {
   version_notes?: string;
   created_at: string;
   updated_at: string;
+  approval_status?: string;
+  approved_by?: string;
+  approval_date?: string;
+  rejection_reason?: string;
 }
 
 export interface DatasetVersion {
@@ -39,6 +45,8 @@ export interface FormErrors {
   qc_by?: string;
   added_date?: string;
   notes?: string;
+  source?: string;
+  domain?: string;
   data?: string;
   version_notes?: string;
 }

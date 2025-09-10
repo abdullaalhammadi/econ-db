@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, Trash2, Calendar, User, FileText, Clock, GitBranch } from 'lucide-react';
+import { Search, Eye, Trash2, Calendar, User, FileText, Clock, GitBranch, Grid3X3, List, Filter, X } from 'lucide-react';
 import { Dataset } from '../types/Dataset';
-import { getDatasets, deleteDataset, getDatasetsWithVersions, migrateOldDatasets } from '../utils/storage';
+import { getDatasets, deleteDataset, migrateOldDatasets } from '../utils/storage';
+import * as apiClient from '../utils/api';
 import DatasetViewer from './DatasetViewer';
+
+type ViewMode = 'card' | 'list';
 
 const DatasetList: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -11,6 +14,10 @@ const DatasetList: React.FC = () => {
   const [showViewer, setShowViewer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<string>('');
+  const [domainFilter, setDomainFilter] = useState<string>('');
 
   useEffect(() => {
     migrateOldDatasets();
@@ -50,21 +57,26 @@ const DatasetList: React.FC = () => {
 
   const getVersionCount = async (indicatorId: string): Promise<number> => {
     try {
-      const datasetsWithVersions = await getDatasetsWithVersions();
-      const found = datasetsWithVersions.find(d => d.indicator_id === indicatorId);
-      return found?.versions.length || 1;
+      // Use the existing API to get versions for just this indicator (no caching)
+      const versions = await apiClient.getDatasetVersions(indicatorId);
+      return versions.length;
     } catch (err) {
       console.error('Failed to get version count:', err);
       return 1;
     }
   };
 
-  const filteredDatasets = datasets.filter(dataset =>
-    dataset.indicator_name_en.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dataset.indicator_name_ar.includes(searchTerm) ||
-    dataset.indicator_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dataset.added_by.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDatasets = datasets.filter(dataset => {
+    const matchesSearch = dataset.indicator_name_en.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dataset.indicator_name_ar.includes(searchTerm) ||
+      dataset.indicator_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dataset.added_by.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSource = !sourceFilter || dataset.source === sourceFilter;
+    const matchesDomain = !domainFilter || dataset.domain === domainFilter;
+    
+    return matchesSearch && matchesSource && matchesDomain;
+  });
 
   if (showViewer && selectedDataset) {
     return (
@@ -117,44 +129,235 @@ const DatasetList: React.FC = () => {
       </div>
 
       <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-          <input
-            type="text"
-            placeholder="Search datasets by name, ID, or author..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+        <div className="flex items-center gap-4 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <input
+              type="text"
+              placeholder="Search datasets by name, ID, or author..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={`p-2 rounded-lg border ${showSidebar ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'} transition-colors`}
+              title="Toggle Filters"
+            >
+              <Filter className="h-5 w-5" />
+            </button>
+            
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('card')}
+                className={`p-2 ${viewMode === 'card' ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600 hover:bg-gray-50'} transition-colors`}
+                title="Card View"
+              >
+                <Grid3X3 className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 border-l border-gray-300 ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600 hover:bg-gray-50'} transition-colors`}
+                title="List View"
+              >
+                <List className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {filteredDatasets.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">
-            {datasets.length === 0 ? 'No datasets uploaded yet' : 'No datasets match your search'}
-          </h3>
-          <p className="text-gray-500">
-            {datasets.length === 0 
-              ? 'Upload your first dataset to get started'
-              : 'Try adjusting your search terms'
-            }
-          </p>
+      <div className="flex gap-6">
+        {/* Sidebar */}
+        {showSidebar && (
+          <div className="w-64 bg-white rounded-lg border border-gray-200 p-4 h-fit">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+              <button
+                onClick={() => setShowSidebar(false)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Source
+                </label>
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Sources</option>
+                  {Array.from(new Set(datasets.map(d => d.source).filter(Boolean))).map(source => (
+                    <option key={source} value={source}>{source}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Domain
+                </label>
+                <select
+                  value={domainFilter}
+                  onChange={(e) => setDomainFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Domains</option>
+                  {Array.from(new Set(datasets.map(d => d.domain).filter(Boolean))).map(domain => (
+                    <option key={domain} value={domain}>{domain}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {(sourceFilter || domainFilter) && (
+                <button
+                  onClick={() => {
+                    setSourceFilter('');
+                    setDomainFilter('');
+                  }}
+                  className="w-full px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+          <div className="flex-1">
+            {filteredDatasets.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                  {datasets.length === 0 ? 'No datasets uploaded yet' : 'No datasets match your search'}
+                </h3>
+                <p className="text-gray-500">
+                  {datasets.length === 0 
+                    ? 'Upload your first dataset to get started'
+                    : 'Try adjusting your search terms'
+                  }
+                </p>
+              </div>
+            ) : (
+              <div className={viewMode === 'card' ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
+                {viewMode === 'card' ? (
+                  filteredDatasets.map((dataset) => (
+                    <DatasetCard
+                      key={dataset.indicator_id}
+                      dataset={dataset}
+                      onView={handleView}
+                      onDelete={handleDelete}
+                      getVersionCount={getVersionCount}
+                    />
+                  ))
+                ) : (
+                  <DatasetListView
+                    datasets={filteredDatasets}
+                    onView={handleView}
+                    onDelete={handleDelete}
+                    getVersionCount={getVersionCount}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredDatasets.map((dataset) => (
-            <DatasetCard
-              key={dataset.indicator_id}
-              dataset={dataset}
-              onView={handleView}
-              onDelete={handleDelete}
-              getVersionCount={getVersionCount}
-            />
-          ))}
-        </div>
-      )}
+      </div>
+    );
+};
+
+interface DatasetListViewProps {
+  datasets: Dataset[];
+  onView: (dataset: Dataset) => void;
+  onDelete: (indicatorId: string) => void;
+  getVersionCount: (indicatorId: string) => Promise<number>;
+}
+
+const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onDelete }) => {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Dataset
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Added By
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Version
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {datasets.map((dataset) => (
+              <tr key={dataset.indicator_id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {dataset.indicator_name_en}
+                    </div>
+                    <div className="text-sm text-gray-600" dir="rtl">
+                      {dataset.indicator_name_ar}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                    {dataset.indicator_id}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {dataset.added_by}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {new Date(dataset.added_date).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  v{dataset.version}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => onView(dataset)}
+                      className="text-blue-600 hover:text-blue-900 flex items-center"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </button>
+                    <button
+                      onClick={() => onDelete(dataset.indicator_id)}
+                      className="text-red-600 hover:text-red-900 flex items-center"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

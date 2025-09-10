@@ -19,6 +19,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
     qc_by: '',
     added_date: new Date().toISOString().split('T')[0],
     notes: '',
+    source: '',
+    domain: '',
     data: undefined,
   });
 
@@ -160,6 +162,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
           qc_by: '',
           added_date: new Date().toISOString().split('T')[0],
           notes: '',
+          source: '',
+          domain: '',
           data: undefined,
         });
       } catch (error) {
@@ -172,6 +176,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
           qc_by: '',
           added_date: new Date().toISOString().split('T')[0],
           notes: '',
+          source: '',
+          domain: '',
           data: undefined,
         });
       }
@@ -366,6 +372,46 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
                 {errors.notes}
               </p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Source
+              </label>
+              <input
+                type="text"
+                value={formData.source || ''}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                className={errors.source ? errorInputClasses : inputClasses}
+                placeholder="Data source (e.g., IMF, World Bank, etc.)"
+              />
+              {errors.source && (
+                <p className="text-red-600 text-sm mt-1 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.source}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Domain
+              </label>
+              <input
+                type="text"
+                value={formData.domain || ''}
+                onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                className={errors.domain ? errorInputClasses : inputClasses}
+                placeholder="Data domain (e.g., Economics, Finance, etc.)"
+              />
+              {errors.domain && (
+                <p className="text-red-600 text-sm mt-1 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.domain}
+                </p>
+              )}
+            </div>
           </div>
 
           {isNewVersion && (

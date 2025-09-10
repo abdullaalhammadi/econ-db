@@ -5,15 +5,29 @@ import UploadForm from './components/UploadForm';
 import DatasetList from './components/DatasetList';
 import Login from './components/Login';
 import Register from './components/Register';
-import { getStatus } from './utils/api';
+import AdminApproval from './components/AdminApproval';
+import { getStatus, checkAdminAccess } from './utils/api';
 
 const App: React.FC = () => {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     const checkStatus = async () => {
       const { logged_in } = await getStatus();
       setLoggedIn(logged_in);
+      
+      if (logged_in) {
+        try {
+          const { is_admin } = await checkAdminAccess();
+          setIsAdmin(is_admin);
+        } catch (error) {
+          console.error('Failed to check admin access:', error);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
     };
     checkStatus();
   }, []);
@@ -25,7 +39,7 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
-        <Navigation loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
+        <Navigation loggedIn={loggedIn} setLoggedIn={setLoggedIn} isAdmin={isAdmin || false} />
         <main className="py-8">
           <Routes>
             <Route path="/login" element={!loggedIn ? <Login onLoginSuccess={() => setLoggedIn(true)} /> : <Navigate to="/" />} />
@@ -38,6 +52,10 @@ const App: React.FC = () => {
             <Route 
               path="/upload" 
               element={loggedIn ? <UploadForm onUploadSuccess={() => {}} /> : <Navigate to="/login" />}
+            />
+            <Route 
+              path="/admin" 
+              element={loggedIn && isAdmin ? <AdminApproval /> : <Navigate to="/" />}
             />
 
           </Routes>

@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from structure import indicators, users, engine
+from structure import indicators, users, roles, engine
 import json
 from datetime import datetime
 
@@ -39,6 +39,16 @@ def load_user(user_id):
         if user:
             return User(id=user.id, username=user.username)
         return None
+
+def is_admin(user_id):
+    """Check if user is an administrator"""
+    with engine.connect() as conn:
+        stmt = select(roles).where(
+            (roles.c.id == str(user_id)) & 
+            (roles.c.role == 'administrator')
+        )
+        res = conn.execute(stmt)
+        return res.first() is not None
 
 
 @app.route('/test', methods=['GET'])
@@ -131,22 +141,125 @@ def status():
         return jsonify({'logged_in': True, 'user': {'username': current_user.username}})
     return jsonify({'logged_in': False})
 
+@app.route('/admin/pending-approvals', methods=['GET'])
+@login_required
+def get_pending_approvals():
+    """Get all pending indicators for admin approval"""
+    if not is_admin(current_user.id):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    with engine.connect() as conn:
+        stmt = select(indicators).where(
+            indicators.c.approval_status == 'Pending Review'
+        ).order_by(desc(indicators.c.added_date))
+        
+        res = conn.execute(stmt)
+        rows = res.mappings().all()
+        
+        pending_indicators = []
+        for row in rows:
+            indicator = {
+                'indicator_id': row['indicator_id'],
+                'version_number': row['version_number'],
+                'indicator_name_en': row['indicator_name_en'],
+                'indicator_name_ar': row['indicator_name_ar'],
+                'added_by': row['added_by'],
+                'qc_by': row['qc_by'],
+                'added_date': row['added_date'].isoformat() if row['added_date'] else '',
+                'notes': row['notes'],
+                'approval_status': row['approval_status'],
+                'uploadedData': json.loads(row['data']) if row['data'] else []
+            }
+            pending_indicators.append(indicator)
+        
+        return jsonify(pending_indicators)
+
+@app.route('/admin/approve/<string:indicator_id>/<int:version>', methods=['POST'])
+@login_required
+def approve_indicator(indicator_id, version):
+    """Approve an indicator"""
+   
+    if not is_admin(current_user.id):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    with engine.connect() as conn:
+
+        
+        # Proceed with update
+        stmt = update(indicators).where(
+            (indicators.c.indicator_id == indicator_id) &
+            (indicators.c.version_number == version)
+        ).values(
+            approval_status='approved',
+            approved_by=current_user.username,
+            approval_date=datetime.now()
+        )
+        
+        result = conn.execute(stmt)
+        conn.commit()
+
+        
+        if result.rowcount > 0:
+            return jsonify({'message': 'Indicator approved successfully'})
+        else:
+            return jsonify({'error': 'Indicator not found'}), 404
+
+
+@app.route('/admin/reject/<string:indicator_id>/<int:version>', methods=['POST'])
+@login_required
+def reject_indicator(indicator_id, version):
+    """Reject an indicator"""
+    
+    if not is_admin(current_user.id):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.get_json()
+    rejection_reason = data.get('reason', '')
+    
+    with engine.connect() as conn:
+        # First check if record exists
+        check_stmt = select(indicators).where(
+            (indicators.c.indicator_id == indicator_id) &
+            (indicators.c.version_number == version)
+        )
+    
+        # Proceed with update
+        stmt = delete(indicators).where(
+            (indicators.c.indicator_id == indicator_id) &
+            (indicators.c.version_number == version))
+        
+        result = conn.execute(stmt)
+
+        
+        conn.commit()
+        
+        if result.rowcount > 0:
+            return jsonify({'message': 'Indicator rejected successfully'})
+        else:
+            return jsonify({'error': 'Indicator not found'}), 404
+
+@app.route('/admin/check-access', methods=['GET'])
+@login_required
+def check_admin_access():
+    """Check if current user has admin access"""
+    return jsonify({'is_admin': is_admin(current_user.id)})
+
 
 @app.route('/indicators', methods=['GET'])
 def get_indicators():
-    """Get all indicators with their latest versions"""
+    """Get all approved indicators with their latest versions"""
     with engine.connect() as conn:
-        # Get the latest version of each indicator
+        # Get the latest approved version of each indicator
         subquery = select(
             indicators.c.indicator_id,
             func.max(indicators.c.version_number).label('max_version')
-        ).group_by(indicators.c.indicator_id).subquery()
+        ).where(indicators.c.approval_status == 'approved').group_by(indicators.c.indicator_id).subquery()
         
         stmt = select(indicators).join(
             subquery,
             (indicators.c.indicator_id == subquery.c.indicator_id) &
             (indicators.c.version_number == subquery.c.max_version)
-        ).order_by(desc(indicators.c.added_date))
+        ).where(indicators.c.approval_status == 'approved').order_by(desc(indicators.c.added_date))
         
         res = conn.execute(stmt)
         rows = res.mappings().all()
@@ -285,7 +398,7 @@ def create_indicator():
         # Determine new version number
         new_version = (existing_version + 1) if existing_version else 1
         
-        # Insert new record
+        # Insert new record with pending approval status
         insert_stmt = insert(indicators).values(
             indicator_id=data['indicator_id'],
             version_number=new_version,
@@ -295,7 +408,8 @@ def create_indicator():
             qc_by=data['qc_by'],
             added_date=datetime.fromisoformat(data['added_date']),
             notes=data['notes'],
-            data=json.dumps(data['uploadedData'])
+            data=json.dumps(data['uploadedData'], ensure_ascii=False),
+            approval_status='Pending Review'
         )
         
         conn.execute(insert_stmt)

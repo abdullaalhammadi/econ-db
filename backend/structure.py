@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import (
     create_engine, MetaData, Table, Column,
-    String, Integer, DateTime, Text, PrimaryKeyConstraint
+    String, Integer, DateTime, Text, PrimaryKeyConstraint, Enum
 )
 
 # Load environment variables from .env file
@@ -31,7 +31,13 @@ indicators = Table(
     Column("qc_by", String(100)),
     Column("added_date", DateTime),
     Column("notes", Text),
+    Column("source", String(255)),
+    Column("domain", String(255)),
     Column("data", Text),  # JSON string of the uploaded data
+    Column("approval_status", String(50), default="Pending Review"),
+    Column("approved_by", String(100)),
+    Column("approval_date", DateTime),
+    Column("rejection_reason", Text),
     PrimaryKeyConstraint("indicator_id", "version_number"),
     schema="APP_DEV"
 )
@@ -41,6 +47,14 @@ users = Table(
     Column("id", Integer, primary_key=True),
     Column("username", String(255), unique=True, nullable=False),
     Column("password", String(255), nullable=False),
+    schema="APP_DEV"
+)
+
+roles = Table(
+    "roles", metadata_obj,
+    Column("id", Integer, primary_key=True),
+    Column("username", String(255), nullable=False),
+    Column("role", String(255), nullable=False),
     schema="APP_DEV"
 )
 

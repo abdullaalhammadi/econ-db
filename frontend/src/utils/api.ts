@@ -90,3 +90,25 @@ export async function getNextIndicatorId(): Promise<string> {
     return 'IND001';
   }
 }
+
+// Admin methods
+export async function checkAdminAccess(): Promise<{ is_admin: boolean }> {
+  return request('/admin/check-access');
+}
+
+export async function getPendingApprovals(): Promise<Dataset[]> {
+  return request('/admin/pending-approvals');
+}
+
+export async function approveIndicator(indicatorId: string, version: number): Promise<{ message: string }> {
+  return request(`/admin/approve/${indicatorId}/${version}`, {
+    method: 'POST',
+  });
+}
+
+export async function rejectIndicator(indicatorId: string, version: number, reason: string): Promise<{ message: string }> {
+  return request(`/admin/reject/${indicatorId}/${version}`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}

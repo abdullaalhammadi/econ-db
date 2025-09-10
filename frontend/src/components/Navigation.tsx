@@ -1,14 +1,15 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Upload, Database, LogOut, LogIn, UserPlus } from 'lucide-react';
+import { Upload, Database, LogOut, LogIn, UserPlus, Shield } from 'lucide-react';
 import { logout } from '../utils/api';
 
 interface NavigationProps {
   loggedIn: boolean;
   setLoggedIn: (loggedIn: boolean) => void;
+  isAdmin?: boolean;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ loggedIn, setLoggedIn }) => {
+const Navigation: React.FC<NavigationProps> = ({ loggedIn, setLoggedIn, isAdmin = false }) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -47,6 +48,15 @@ const Navigation: React.FC<NavigationProps> = ({ loggedIn, setLoggedIn }) => {
                   <Database className="h-4 w-4 inline mr-2" />
                   View Datasets
                 </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="px-4 py-2 rounded-lg font-medium transition-colors text-blue-600 hover:text-blue-900 hover:bg-blue-100"
+                  >
+                    <Shield className="h-4 w-4 inline mr-2" />
+                    Admin Panel
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 rounded-lg font-medium transition-colors text-red-600 hover:text-red-900 hover:bg-red-100"
