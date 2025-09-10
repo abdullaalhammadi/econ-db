@@ -37,6 +37,10 @@ export async function getDatasetVersion(indicatorId: string, version: number): P
   return request<Dataset>(`/indicators/${indicatorId}/versions/${version}`);
 }
 
+export async function getLatestIndicatorData(indicatorId: string): Promise<Dataset> {
+  return request<Dataset>(`/indicators/${indicatorId}/latest`);
+}
+
 export async function createDataset(dataset: Omit<Dataset, 'version' | 'created_at' | 'updated_at'>): Promise<{ message: string; version: number; is_new_version: boolean }> {
   return request('/indicators', {
     method: 'POST',

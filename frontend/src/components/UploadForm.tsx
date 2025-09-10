@@ -3,7 +3,7 @@ import { Upload, FileText, AlertCircle, CheckCircle2, Info } from 'lucide-react'
 import { Dataset, FormErrors } from '../types/Dataset';
 import { saveDataset, getDatasetWithVersions, migrateOldDatasets } from '../utils/storage';
 import { parseCSV, readFileAsText } from '../utils/fileParser';
-import { getStatus, getNextIndicatorId } from '../utils/api';
+import { getStatus, getNextIndicatorId, getLatestIndicatorData } from '../utils/api';
 import { DataRow } from '../types/Dataset';
 
 interface UploadFormProps {
@@ -30,6 +30,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [existingDataset, setExistingDataset] = useState<Dataset | null>(null);
   const [isNewVersion, setIsNewVersion] = useState(false);
+  const [isPrefilled, setIsPrefilled] = useState(false);
 
   useEffect(() => {
     migrateOldDatasets();
@@ -64,23 +65,56 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
             if (existing) {
               setExistingDataset(existing.latest_dataset);
               setIsNewVersion(true);
+              
+              // Prefill form with existing data if not already prefilled
+              if (!isPrefilled) {
+                const latestData = await getLatestIndicatorData(formData.indicator_id);
+                setFormData(prev => ({
+                  ...prev,
+                  indicator_name_en: latestData.indicator_name_en,
+                  indicator_name_ar: latestData.indicator_name_ar,
+                  source: latestData.source || '',
+                  domain: latestData.domain || '',
+                  qc_by: latestData.qc_by,
+                  notes: latestData.notes,
+                  // Keep the current indicator_id, added_by, and added_date
+                  // Don't prefill data file - user must provide new one
+                }));
+                setIsPrefilled(true);
+              }
             } else {
               setExistingDataset(null);
               setIsNewVersion(false);
+              setIsPrefilled(false);
             }
           } catch (error) {
             console.error('Error checking existing dataset:', error);
             setExistingDataset(null);
             setIsNewVersion(false);
+            setIsPrefilled(false);
           }
         } else {
           setExistingDataset(null);
           setIsNewVersion(false);
+          setIsPrefilled(false);
         }
       };
       checkExistingDataset()
     }, 1000);
-      return () => clearTimeout(timer)}, [formData.indicator_id]);
+      return () => clearTimeout(timer)}, [formData.indicator_id, isPrefilled]);
+
+  const clearPrefilledData = () => {
+    setFormData(prev => ({
+      ...prev,
+      indicator_name_en: '',
+      indicator_name_ar: '',
+      source: '',
+      domain: '',
+      qc_by: '',
+      notes: '',
+    }));
+    setIsPrefilled(false);
+  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -185,6 +219,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
       setVersionNotes('');
       setExistingDataset(null);
       setIsNewVersion(false);
+      setIsPrefilled(false);
       
     } catch (error) {
       console.error('Upload failed:', error);
