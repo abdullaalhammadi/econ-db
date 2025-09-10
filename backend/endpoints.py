@@ -11,6 +11,7 @@ from blueprints.indicators import indicators_bp
 from blueprints.utils import utils_bp
 
 app = Flask(__name__)
+app.secret_key = 'super secret key'  # Change this!
 
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
