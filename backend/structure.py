@@ -25,8 +25,8 @@ indicators = Table(
     "indicators", metadata_obj,
     Column("indicator_id", String(255)),  # Oracle requires explicit length for varchar
     Column("version_number", Integer),
-    Column("indicator_name_en", String(500)),
-    Column("indicator_name_ar", String(500)),
+    Column("indicator_name_en", String(255)),
+    Column("indicator_name_ar", String(255)),
     Column("added_by", String(100)),
     Column("qc_by", String(100)),
     Column("added_date", DateTime),

@@ -42,7 +42,15 @@ const App: React.FC = () => {
         <Navigation loggedIn={loggedIn} setLoggedIn={setLoggedIn} isAdmin={isAdmin || false} />
         <main className="py-8">
           <Routes>
-            <Route path="/login" element={!loggedIn ? <Login onLoginSuccess={() => setLoggedIn(true)} /> : <Navigate to="/" />} />
+            <Route path="/login" element={!loggedIn ? <Login onLoginSuccess={() => {
+              setLoggedIn(true);
+              // Check admin status after successful login
+              checkAdminAccess().then(({ is_admin }) => {
+                setIsAdmin(is_admin);
+              }).catch(() => {
+                setIsAdmin(false);
+              });
+            }} /> : <Navigate to="/" />} />
             <Route path="/register" element={!loggedIn ? <Register /> : <Navigate to="/" />} />
             
             <Route 

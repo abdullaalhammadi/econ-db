@@ -1,9 +1,8 @@
 import { Dataset, DatasetWithVersions, DatasetVersion } from '../types/Dataset';
 import * as apiClient from './api';
-import { ApiDataset } from '../types/Dataset';
 
 // Convert API dataset to frontend Dataset type
-const convertApiDataset = (apiDataset: ApiDataset): Dataset => ({
+const convertApiDataset = (apiDataset: Dataset): Dataset => ({
   indicator_id: apiDataset.indicator_id,
   indicator_name_en: apiDataset.indicator_name_en,
   indicator_name_ar: apiDataset.indicator_name_ar,
@@ -15,15 +14,19 @@ const convertApiDataset = (apiDataset: ApiDataset): Dataset => ({
   created_at: apiDataset.created_at,
   updated_at: apiDataset.updated_at,
   uploadedData: apiDataset.uploadedData,
+  source: apiDataset.source,
+  domain: apiDataset.domain
 });
 
-export const saveDataset = async (dataset: Dataset, versionNotes?: string): Promise<void> => {
+export const saveDataset = async (dataset: Dataset): Promise<void> => {
   try {
     const result = await apiClient.createDataset({
       indicator_id: dataset.indicator_id,
       indicator_name_en: dataset.indicator_name_en,
       indicator_name_ar: dataset.indicator_name_ar,
       added_by: dataset.added_by,
+      source: dataset.source,
+      domain: dataset.domain,
       qc_by: dataset.qc_by,
       added_date: dataset.added_date,
       notes: dataset.notes,

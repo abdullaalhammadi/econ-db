@@ -56,30 +56,31 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
   }, []);
 
   useEffect(() => {
-    const checkExistingDataset = async () => {
-      if (formData.indicator_id) {
-        try {
-          const existing = await getDatasetWithVersions(formData.indicator_id);
-          if (existing) {
-            setExistingDataset(existing.latest_dataset);
-            setIsNewVersion(true);
-          } else {
+    const timer = setTimeout(async () => {
+      const checkExistingDataset = async () => {
+        if (formData.indicator_id) {
+          try {
+            const existing = await getDatasetWithVersions(formData.indicator_id);
+            if (existing) {
+              setExistingDataset(existing.latest_dataset);
+              setIsNewVersion(true);
+            } else {
+              setExistingDataset(null);
+              setIsNewVersion(false);
+            }
+          } catch (error) {
+            console.error('Error checking existing dataset:', error);
             setExistingDataset(null);
             setIsNewVersion(false);
           }
-        } catch (error) {
-          console.error('Error checking existing dataset:', error);
+        } else {
           setExistingDataset(null);
           setIsNewVersion(false);
         }
-      } else {
-        setExistingDataset(null);
-        setIsNewVersion(false);
-      }
-    };
-
-    checkExistingDataset();
-  }, [formData.indicator_id]);
+      };
+      checkExistingDataset()
+    }, 1000);
+      return () => clearTimeout(timer)}, [formData.indicator_id]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -138,7 +139,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
         updated_at: new Date().toISOString(),
       };
 
-      await saveDataset(dataset, versionNotes || undefined);
+      await saveDataset(dataset);
       
       setShowSuccess(true);
       setTimeout(() => {
@@ -245,14 +246,14 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="text-sm font-semibold text-gray-700 mb-2">
                 Indicator ID
               </label>
               <input
                 type="text"
                 value={formData.indicator_id}
-                readOnly
-                className={`${inputClasses} bg-gray-50 cursor-not-allowed`}
+                onChange={(e) => setFormData({ ...formData, indicator_id: e.target.value })}
+                className={`${inputClasses} bg-gray-50`}
                 placeholder="Auto-generated serial number"
               />
             </div>
@@ -398,13 +399,22 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Domain
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.domain || ''}
                 onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
                 className={errors.domain ? errorInputClasses : inputClasses}
-                placeholder="Data domain (e.g., Economics, Finance, etc.)"
-              />
+              >
+                <option value="">Select a domain</option>
+                <option value="Demographic">Demographic</option>
+                <option value="Social">Social</option>
+                <option value="Health">Health</option>
+                <option value="Education">Education</option>
+                <option value="Housing">Housing</option>
+                <option value="Energy">Energy</option>
+                <option value="Labor Market">Labor Market</option>
+                <option value="Economy">Economy</option>
+                <option value="Tourism">Tourism</option>
+              </select>
               {errors.domain && (
                 <p className="text-red-600 text-sm mt-1 flex items-center">
                   <AlertCircle className="h-4 w-4 mr-1" />

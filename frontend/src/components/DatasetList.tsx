@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, Trash2, Calendar, User, FileText, Clock, GitBranch, Grid3X3, List, Filter, X } from 'lucide-react';
+import { Search, Eye, Trash2, Calendar, User, FileText, Clock, Grid3X3, List, Filter, X } from 'lucide-react';
 import { Dataset } from '../types/Dataset';
 import { getDatasets, deleteDataset, migrateOldDatasets } from '../utils/storage';
-import * as apiClient from '../utils/api';
 import DatasetViewer from './DatasetViewer';
+import DomainChip from './DomainChip';
 
 type ViewMode = 'card' | 'list';
 
@@ -55,16 +55,6 @@ const DatasetList: React.FC = () => {
     setShowViewer(true);
   };
 
-  const getVersionCount = async (indicatorId: string): Promise<number> => {
-    try {
-      // Use the existing API to get versions for just this indicator (no caching)
-      const versions = await apiClient.getDatasetVersions(indicatorId);
-      return versions.length;
-    } catch (err) {
-      console.error('Failed to get version count:', err);
-      return 1;
-    }
-  };
 
   const filteredDatasets = datasets.filter(dataset => {
     const matchesSearch = dataset.indicator_name_en.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -211,9 +201,15 @@ const DatasetList: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Domains</option>
-                  {Array.from(new Set(datasets.map(d => d.domain).filter(Boolean))).map(domain => (
-                    <option key={domain} value={domain}>{domain}</option>
-                  ))}
+                  <option value="Demographic">Demographic</option>
+                  <option value="Social">Social</option>
+                  <option value="Health">Health</option>
+                  <option value="Education">Education</option>
+                  <option value="Housing">Housing</option>
+                  <option value="Energy">Energy</option>
+                  <option value="Labor Market">Labor Market</option>
+                  <option value="Economy">Economy</option>
+                  <option value="Tourism">Tourism</option>
                 </select>
               </div>
               
@@ -255,7 +251,6 @@ const DatasetList: React.FC = () => {
                       dataset={dataset}
                       onView={handleView}
                       onDelete={handleDelete}
-                      getVersionCount={getVersionCount}
                     />
                   ))
                 ) : (
@@ -263,7 +258,6 @@ const DatasetList: React.FC = () => {
                     datasets={filteredDatasets}
                     onView={handleView}
                     onDelete={handleDelete}
-                    getVersionCount={getVersionCount}
                   />
                 )}
               </div>
@@ -278,7 +272,6 @@ interface DatasetListViewProps {
   datasets: Dataset[];
   onView: (dataset: Dataset) => void;
   onDelete: (indicatorId: string) => void;
-  getVersionCount: (indicatorId: string) => Promise<number>;
 }
 
 const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onDelete }) => {
@@ -293,6 +286,9 @@ const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onD
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Domain
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Added By
@@ -325,6 +321,9 @@ const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onD
                   <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                     {dataset.indicator_id}
                   </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <DomainChip domain={dataset.domain || ''} size="sm" />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   {dataset.added_by}
@@ -366,19 +365,9 @@ interface DatasetCardProps {
   dataset: Dataset;
   onView: (dataset: Dataset) => void;
   onDelete: (indicatorId: string) => void;
-  getVersionCount: (indicatorId: string) => Promise<number>;
 }
 
-const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, getVersionCount }) => {
-  const [versionCount, setVersionCount] = useState(1);
-
-  useEffect(() => {
-    const fetchVersionCount = async () => {
-      const count = await getVersionCount(dataset.indicator_id);
-      setVersionCount(count);
-    };
-    fetchVersionCount();
-  }, [dataset.indicator_id, getVersionCount]);
+const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300">
@@ -395,12 +384,10 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, ge
               <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                 ID: {dataset.indicator_id}
               </div>
-              {versionCount > 1 && (
-                <div className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                  <GitBranch className="h-3 w-3 mr-1" />
-                  {versionCount} versions
-                </div>
-              )}
+              <DomainChip domain={dataset.domain || ''} size="sm" />
+              <div className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                v{dataset.version}
+              </div>
             </div>
           </div>
         </div>
