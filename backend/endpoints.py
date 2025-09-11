@@ -16,7 +16,7 @@ app.secret_key = 'super secret key'  # Change this!
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
 
-CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev'], allow_headers=['Content-Type', 'Authorization'])  # Enable CORS for frontend connection
+CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev', 'http://localhost:5173'], allow_headers=['Content-Type', 'Authorization'])  # Enable CORS for frontend connection
 
 # Flask-Login setup
 login_manager = LoginManager()

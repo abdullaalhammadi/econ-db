@@ -6,6 +6,8 @@ import DatasetList from './components/DatasetList';
 import Login from './components/Login';
 import Register from './components/Register';
 import AdminApproval from './components/AdminApproval';
+import UserManagement from './components/UserManagement';
+import AuditLog from './components/AuditLog';
 import { getStatus, checkAdminAccess } from './utils/api';
 
 const App: React.FC = () => {
@@ -55,7 +57,7 @@ const App: React.FC = () => {
             
             <Route 
               path="/" 
-              element={loggedIn ? <DatasetList /> : <Navigate to="/login" />}
+              element={loggedIn ? <DatasetList isAdmin={isAdmin || false} /> : <Navigate to="/login" />}
             />
             <Route 
               path="/upload" 
@@ -64,6 +66,14 @@ const App: React.FC = () => {
             <Route 
               path="/admin" 
               element={loggedIn && isAdmin ? <AdminApproval /> : <Navigate to="/" />}
+            />
+            <Route 
+              path="/admin/users" 
+              element={loggedIn && isAdmin ? <UserManagement /> : <Navigate to="/" />}
+            />
+            <Route 
+              path="/admin/audit" 
+              element={loggedIn && isAdmin ? <AuditLog /> : <Navigate to="/" />}
             />
 
           </Routes>

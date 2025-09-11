@@ -7,7 +7,11 @@ import DomainChip from './DomainChip';
 
 type ViewMode = 'card' | 'list';
 
-const DatasetList: React.FC = () => {
+interface DatasetListProps {
+  isAdmin?: boolean;
+}
+
+const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
@@ -251,6 +255,7 @@ const DatasetList: React.FC = () => {
                       dataset={dataset}
                       onView={handleView}
                       onDelete={handleDelete}
+                      isAdmin={isAdmin}
                     />
                   ))
                 ) : (
@@ -258,6 +263,7 @@ const DatasetList: React.FC = () => {
                     datasets={filteredDatasets}
                     onView={handleView}
                     onDelete={handleDelete}
+                    isAdmin={isAdmin}
                   />
                 )}
               </div>
@@ -272,9 +278,10 @@ interface DatasetListViewProps {
   datasets: Dataset[];
   onView: (dataset: Dataset) => void;
   onDelete: (indicatorId: string) => void;
+  isAdmin?: boolean;
 }
 
-const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onDelete }) => {
+const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onDelete, isAdmin = false }) => {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -343,13 +350,15 @@ const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onD
                       <Eye className="h-4 w-4 mr-1" />
                       View
                     </button>
-                    <button
-                      onClick={() => onDelete(dataset.indicator_id)}
-                      className="text-red-600 hover:text-red-900 flex items-center"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => onDelete(dataset.indicator_id)}
+                        className="text-red-600 hover:text-red-900 flex items-center"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -365,9 +374,10 @@ interface DatasetCardProps {
   dataset: Dataset;
   onView: (dataset: Dataset) => void;
   onDelete: (indicatorId: string) => void;
+  isAdmin?: boolean;
 }
 
-const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete }) => {
+const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, isAdmin = false }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300">
@@ -427,17 +437,19 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete }) 
         <div className="flex space-x-2">
           <button
             onClick={() => onView(dataset)}
-            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center"
+            className={`${isAdmin ? 'flex-1' : 'w-full'} bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center`}
           >
             <Eye className="h-4 w-4 mr-2" />
             View Data
           </button>
-          <button
-            onClick={() => onDelete(dataset.indicator_id)}
-            className="bg-red-100 text-red-700 py-2 px-4 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium flex items-center justify-center"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => onDelete(dataset.indicator_id)}
+              className="bg-red-100 text-red-700 py-2 px-4 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium flex items-center justify-center"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

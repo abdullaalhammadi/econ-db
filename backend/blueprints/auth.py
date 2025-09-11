@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import select, insert
-from structure import users, engine
+from structure import users, roles, engine
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -24,11 +24,21 @@ def register():
 
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         
-        insert_stmt = insert(users).values(
+        # Insert user
+        insert_user_stmt = insert(users).values(
             username=username,
             password=hashed_password
         )
-        conn.execute(insert_stmt)
+        result = conn.execute(insert_user_stmt)
+        user_id = result.inserted_primary_key[0]
+        
+        # Insert default role
+        insert_role_stmt = insert(roles).values(
+            id=user_id,
+            username=username,
+            role='standard'
+        )
+        conn.execute(insert_role_stmt)
         conn.commit()
 
         return jsonify({'message': 'User registered successfully'}), 201

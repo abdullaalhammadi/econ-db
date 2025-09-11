@@ -1,11 +1,22 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import select, insert, delete, desc, func
-from structure import indicators, engine
+from structure import indicators, audit_logs, roles, engine
 import json
 from datetime import datetime
+import time
 
 indicators_bp = Blueprint('indicators', __name__, url_prefix='/indicators')
+
+def is_admin(user_id):
+    """Check if user is an administrator"""
+    with engine.connect() as conn:
+        stmt = select(roles).where(
+            (roles.c.id == str(user_id)) & 
+            (roles.c.role == 'administrator')
+        )
+        res = conn.execute(stmt)
+        return res.first() is not None
 
 @indicators_bp.route('', methods=['GET'])
 def get_indicators():
@@ -83,6 +94,17 @@ def create_indicator():
         )
         
         conn.execute(insert_stmt)
+        
+        # Log the upload action
+        log_stmt = insert(audit_logs).values(
+            id=int(time.time()),
+            timestamp=datetime.now(),
+            admin_user=current_user.username,
+            action_type='indicator_upload',
+            target_indicator=data['indicator_id'],
+            details=f'Uploaded indicator {data["indicator_id"]} version {new_version} ({"new version" if existing_version else "new indicator"})'
+        )
+        conn.execute(log_stmt)
         conn.commit()
         
         return jsonify({
@@ -94,16 +116,35 @@ def create_indicator():
 @indicators_bp.route('/<string:indicator_id>', methods=['DELETE'])
 @login_required
 def delete_indicator(indicator_id):
-    """Delete all versions of an indicator"""
+    """Delete all versions of an indicator (Admin only)"""
+    if not is_admin(current_user.id):
+        return jsonify({'error': 'Admin access required'}), 403
+    
     with engine.connect() as conn:
+        # First check how many versions exist for logging
+        count_stmt = select(func.count()).select_from(indicators).where(indicators.c.indicator_id == indicator_id)
+        version_count = conn.execute(count_stmt).scalar()
+        
+        if version_count == 0:
+            return jsonify({'error': 'Indicator not found'}), 404
+        
+        # Delete the indicator
         stmt = delete(indicators).where(indicators.c.indicator_id == indicator_id)
         result = conn.execute(stmt)
+        
+        # Log the deletion action
+        log_stmt = insert(audit_logs).values(
+            id=int(time.time()),
+            timestamp=datetime.now(),
+            admin_user=current_user.username,
+            action_type='indicator_delete',
+            target_indicator=indicator_id,
+            details=f'Deleted indicator {indicator_id} ({version_count} version{"s" if version_count != 1 else ""})'
+        )
+        conn.execute(log_stmt)
         conn.commit()
         
-        if result.rowcount > 0:
-            return jsonify({'message': 'Indicator deleted successfully'})
-        else:
-            return jsonify({'error': 'Indicator not found'}), 404
+        return jsonify({'message': 'Indicator deleted successfully'})
 
 @indicators_bp.route('/<string:indicator_id>/data', methods=['GET'])
 def get_indicator_data(indicator_id):

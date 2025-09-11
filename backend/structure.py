@@ -58,6 +58,20 @@ roles = Table(
     schema="APP_DEV"
 )
 
+audit_logs = Table(
+    "audit_logs", metadata_obj,
+    Column("id", Integer, primary_key=True),
+    Column("timestamp", DateTime, nullable=False),
+    Column("admin_user", String(255), nullable=False),
+    Column("action_type", String(100), nullable=False),
+    Column("target_user", String(255)),
+    Column("target_indicator", String(255)),
+    Column("old_value", String(255)),
+    Column("new_value", String(255)),
+    Column("details", Text),
+    schema="APP_DEV"
+)
+
 metadata_obj.create_all(engine)
 
 if __name__ == '__main__':

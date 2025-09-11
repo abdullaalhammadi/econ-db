@@ -116,3 +116,39 @@ export async function rejectIndicator(indicatorId: string, version: number, reas
     body: JSON.stringify({ reason }),
   });
 }
+
+// User management methods
+export async function getUsersWithRoles(): Promise<Array<{ id: number; username: string; role: string }>> {
+  return request('/admin/users');
+}
+
+export async function updateUserRole(userId: number, role: string): Promise<{ message: string }> {
+  return request(`/admin/users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  });
+}
+
+// Audit log methods
+export async function getAuditLogs(queryParams?: string): Promise<{
+  logs: Array<{
+    id: number;
+    timestamp: string;
+    admin_user: string;
+    action_type: string;
+    target_user?: string;
+    target_indicator?: string;
+    old_value?: string;
+    new_value?: string;
+    details?: string;
+  }>;
+  pagination: {
+    page: number;
+    per_page: number;
+    total: number;
+    pages: number;
+  };
+}> {
+  const endpoint = queryParams ? `/admin/audit-logs?${queryParams}` : '/admin/audit-logs';
+  return request(endpoint);
+}
