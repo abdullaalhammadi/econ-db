@@ -75,6 +75,7 @@ jobs:
             docker stop econ-db-backend || true
             docker rm econ-db-backend || true
             
+            
             # Run the new container
             docker run -d \
               --name econ-db-backend \
