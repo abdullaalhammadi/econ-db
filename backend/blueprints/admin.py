@@ -8,6 +8,7 @@ import time
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+
 def is_admin(user_id):
     """Check if user is an administrator"""
     with engine.connect() as conn:
