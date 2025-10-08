@@ -52,10 +52,11 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-    deploy:
+  deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
@@ -66,26 +67,36 @@ jobs:
           script: |
             set -euo pipefail
 
-            # 1) Login to GHCR and pull latest backend image
+            # 1) Login to GitHub Container Registry
             echo ${{ secrets.TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # 2) Pull latest backend image
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-            # 2) Ensure user-defined bridge network exists (enables Docker DNS)
+            # 3) Ensure user-defined bridge network exists (Docker DNS)
             docker network inspect appnet >/dev/null 2>&1 || docker network create appnet
 
-            # 3) Ensure oracle-db is attached to appnet (no-op if already attached)
+            # 4) Ensure oracle-db container is attached to appnet
             if ! docker network inspect appnet --format '{{json .Containers}}' | grep -q '"Name":"oracle-db"'; then
               docker network connect appnet oracle-db || true
             fi
 
-            # 4) (Optional) verify DB listener is reachable by name on 1521
-            docker run --rm --network appnet busybox sh -c 'nc -z oracle-db 1521'
-            echo "Oracle reachable at oracle-db:1521"
+            # 5) Stop and remove existing backend container if running
+            docker stop econ-db-backend || true
+            docker rm econ-db-backend || true
 
-            # 5) Restart backend on the same network, using oracle-db as host
-            docker stop econ-db-backend >/dev/null 2>&1 || true
-            docker rm   econ-db-backend >/dev/null 2>&1 || true
+            # 6) Wait until the Oracle listener is reachable via the network
+            echo "Checking Oracle connectivity on oracle-db:1521..."
+            for i in $(seq 1 60); do
+              if docker run --rm --network appnet busybox sh -c "nc -z oracle-db 1521"; then
+                echo "✅ Oracle reachable on oracle-db:1521"
+                break
+              fi
+              echo "Waiting for Oracle listener... (${i}/60)"
+              sleep 2
+            done
 
+            # 7) Run the new backend container on the same network
             docker run -d \
               --name econ-db-backend \
               --network appnet \
@@ -97,3 +108,5 @@ jobs:
               -e ORACLE_USERNAME="${{ secrets.ORACLE_USERNAME }}" \
               -e ORACLE_PASSWORD="${{ secrets.ORACLE_PASSWORD }}" \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+            echo "✅ Backend deployed successfully and connected to oracle-db via appnet network"
