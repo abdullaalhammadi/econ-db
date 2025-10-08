@@ -1,20 +1,14 @@
+import Papa from 'papaparse';
+
 export const parseCSV = (content: string): any[] => {
-  const lines = content.split('\n').filter(line => line.trim());
-  if (lines.length === 0) return [];
-  
-  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-  const data = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-    const row: any = {};
-    headers.forEach((header, index) => {
-      row[header] = values[index] || '';
-    });
-    data.push(row);
-  }
-  
-  return data;
+  const result = Papa.parse(content, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: false, // Keep all values as strings
+    transformHeader: (header: string) => header.trim(),
+  });
+
+  return result.data as any[];
 };
 
 export const readFileAsText = (file: File): Promise<string> => {
