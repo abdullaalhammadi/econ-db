@@ -5,6 +5,7 @@ from sqlalchemy import (
     String, Integer, DateTime, Text, PrimaryKeyConstraint, Enum
 )
 
+
 # Load environment variables from .env file
 load_dotenv()
 
