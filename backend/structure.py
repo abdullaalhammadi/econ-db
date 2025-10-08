@@ -6,6 +6,7 @@ from sqlalchemy import (
 )
 
 
+
 # Load environment variables from .env file
 load_dotenv()
 
