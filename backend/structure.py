@@ -1,31 +1,39 @@
 import os
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 from sqlalchemy import (
     create_engine, MetaData, Table, Column,
-    String, Integer, DateTime, Text, PrimaryKeyConstraint, Enum
+    String, Integer, DateTime, Text, PrimaryKeyConstraint
 )
-
-
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Oracle DB connection configuration from environment variables
-ORACLE_HOST = os.getenv("ORACLE_HOST")
-ORACLE_PORT = os.getenv("ORACLE_PORT")
-ORACLE_SERVICE_NAME = os.getenv("ORACLE_SERVICE_NAME")
-ORACLE_USERNAME = os.getenv("ORACLE_USERNAME")
-ORACLE_PASSWORD = os.getenv("ORACLE_PASSWORD")
+# SQL Server DB connection configuration from environment variables
+SQLSERVER_HOST = os.getenv("SQLSERVER_HOST")
+SQLSERVER_PORT = os.getenv("SQLSERVER_PORT")
+SQLSERVER_DATABASE = os.getenv("SQLSERVER_DATABASE")
+SQLSERVER_USERNAME = os.getenv("SQLSERVER_USERNAME")
+SQLSERVER_PASSWORD = os.getenv("SQLSERVER_PASSWORD")
 
-# Oracle connection string
-oracle_connection_string = f"oracle+oracledb://{ORACLE_USERNAME}:{ORACLE_PASSWORD}@{ORACLE_HOST}:{ORACLE_PORT}/?service_name={ORACLE_SERVICE_NAME}"
-engine = create_engine(oracle_connection_string)
+# SQL Server connection string
+# Using pymssql driver (alternative: pyodbc)
+params = quote_plus(
+    "DRIVER=ODBC Driver 18 for SQL Server;"
+    f"SERVER={SQLSERVER_HOST},{SQLSERVER_PORT};"
+    f"DATABASE={SQLSERVER_DATABASE};"
+    f"UID={SQLSERVER_USERNAME};"
+    f"PWD={SQLSERVER_PASSWORD};"
+    "TrustServerCertificate=yes;"
+)
+engine_url = f"mssql+pyodbc:///?odbc_connect={params}"
+engine = create_engine(engine_url)
 metadata_obj = MetaData()
 
 
 indicators = Table(
     "indicators", metadata_obj,
-    Column("indicator_id", String(255)),  # Oracle requires explicit length for varchar
+    Column("indicator_id", String(255)),
     Column("version_number", Integer),
     Column("indicator_name_en", String(255)),
     Column("indicator_name_ar", String(255)),
@@ -41,28 +49,28 @@ indicators = Table(
     Column("approval_date", DateTime),
     Column("rejection_reason", Text),
     PrimaryKeyConstraint("indicator_id", "version_number"),
-    schema="APP_DEV"
+    schema="app_dev"
 )
 
 users = Table(
     "users", metadata_obj,
-    Column("id", Integer, primary_key=True),
+    Column("id", Integer, primary_key=True, autoincrement=True),
     Column("username", String(255), unique=True, nullable=False),
     Column("password", String(255), nullable=False),
-    schema="APP_DEV"
+    schema="app_dev"
 )
 
 roles = Table(
     "roles", metadata_obj,
-    Column("id", Integer, primary_key=True),
+    Column("id", Integer, primary_key=True, autoincrement=True),
     Column("username", String(255), nullable=False),
     Column("role", String(255), nullable=False),
-    schema="APP_DEV"
+    schema="app_dev"
 )
 
 audit_logs = Table(
     "audit_logs", metadata_obj,
-    Column("id", Integer, primary_key=True),
+    Column("id", Integer, primary_key=True, autoincrement=True),
     Column("timestamp", DateTime, nullable=False),
     Column("admin_user", String(255), nullable=False),
     Column("action_type", String(100), nullable=False),
@@ -71,7 +79,7 @@ audit_logs = Table(
     Column("old_value", String(255)),
     Column("new_value", String(255)),
     Column("details", Text),
-    schema="APP_DEV"
+    schema="app_dev"
 )
 
 metadata_obj.create_all(engine)
