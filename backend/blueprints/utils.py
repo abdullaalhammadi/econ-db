@@ -25,9 +25,8 @@ def test_db():
             
             return jsonify({
                 'status': 'ok',
-                'message': 'Database connection successful',
-                'users': users_data
-            })
+                'message': 'Database connection successful'
+            }), 200
     except Exception as e:
         return jsonify({
             'status': 'error',

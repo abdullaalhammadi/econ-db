@@ -73,40 +73,20 @@ jobs:
             # 2) Pull latest backend image
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-            # 3) Ensure user-defined bridge network exists (Docker DNS)
-            docker network inspect appnet >/dev/null 2>&1 || docker network create appnet
-
-            # 4) Ensure oracle-db container is attached to appnet
-            if ! docker network inspect appnet --format '{{json .Containers}}' | grep -q '"Name":"oracle-db"'; then
-              docker network connect appnet oracle-db || true
-            fi
-
-            # 5) Stop and remove existing backend container if running
+            # 3) Stop and remove existing backend container if running
             docker stop econ-db-backend || true
             docker rm econ-db-backend || true
 
-            # 6) Wait until the Oracle listener is reachable via the network
-            echo "Checking Oracle connectivity on oracle-db:1521..."
-            for i in $(seq 1 60); do
-              if docker run --rm --network appnet busybox sh -c "nc -z oracle-db 1521"; then
-                echo "✅ Oracle reachable on oracle-db:1521"
-                break
-              fi
-              echo "Waiting for Oracle listener... (${i}/60)"
-              sleep 2
-            done
-
-            # 7) Run the new backend container on the same network
+            # 4) Run the new backend container with SQL Server configuration
             docker run -d \
               --name econ-db-backend \
-              --network appnet \
               --restart unless-stopped \
               -p 5000:5000 \
-              -e ORACLE_HOST="oracle-db" \
-              -e ORACLE_PORT="1521" \
-              -e ORACLE_SERVICE_NAME="${{ secrets.ORACLE_SERVICE_NAME }}" \
-              -e ORACLE_USERNAME="${{ secrets.ORACLE_USERNAME }}" \
-              -e ORACLE_PASSWORD="${{ secrets.ORACLE_PASSWORD }}" \
+              -e SQLSERVER_HOST="${{ secrets.SQLSERVER_HOST }}" \
+              -e SQLSERVER_PORT="${{ secrets.SQLSERVER_PORT }}" \
+              -e SQLSERVER_DATABASE="${{ secrets.SQLSERVER_DATABASE }}" \
+              -e SQLSERVER_USERNAME="${{ secrets.SQLSERVER_USERNAME }}" \
+              -e SQLSERVER_PASSWORD="${{ secrets.SQLSERVER_PASSWORD }}" \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-            echo "✅ Backend deployed successfully and connected to oracle-db via appnet network"
+            echo "✅ Backend deployed successfully with SQL Server configuration"
