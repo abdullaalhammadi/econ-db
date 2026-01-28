@@ -9,14 +9,22 @@ from blueprints.auth import auth_bp
 from blueprints.admin import admin_bp
 from blueprints.indicators import indicators_bp
 from blueprints.utils import utils_bp
+import os  # Add at top of file
+
 
 app = Flask(__name__)
-app.secret_key = 'super secret key'  # Change this!
+app.secret_key = os.getenv('SECRET_KEY')
 
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
 
-CORS(app, supports_credentials=True, origins=['https://econ-db.pages.dev', 'http://localhost:5173'], allow_headers=['Content-Type', 'Authorization'])  # Enable CORS for frontend connection
+cors_origins = os.getenv('CORS_ALLOWED_ORIGINS')
+if cors_origins:
+    allowed_origins = [origin.strip() for origin in cors_origins.split(',')]
+else:
+    allowed_origins = []  # No CORS origins - will block all cross-origin requests
+
+CORS(app, supports_credentials=True, origins=allowed_origins, allow_headers=['Content-Type', 'Authorization'])
 
 # Flask-Login setup
 login_manager = LoginManager()
