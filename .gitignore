@@ -26,3 +26,4 @@ backend/.venv/
 *.sw?
 .env
 deploy.sh
+frontend_deploy.sh
