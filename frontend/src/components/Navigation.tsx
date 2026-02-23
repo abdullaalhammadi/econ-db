@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Upload, Database, LogOut, LogIn, UserPlus, Shield, Users, History, ChevronDown } from 'lucide-react';
+import { Upload, Database, LogOut, LogIn, Shield, Users, History, ChevronDown } from 'lucide-react';
 import { logout } from '../utils/api';
 
 interface NavigationProps {
@@ -114,22 +114,13 @@ const Navigation: React.FC<NavigationProps> = ({ loggedIn, setLoggedIn, isAdmin 
                 </button>
               </>
             ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-4 py-2 rounded-lg font-medium transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <LogIn className="h-4 w-4 inline mr-2" />
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2 rounded-lg font-medium transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <UserPlus className="h-4 w-4 inline mr-2" />
-                  Register
-                </Link>
-              </>
+              <Link
+                to="/login"
+                className="px-4 py-2 rounded-lg font-medium transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              >
+                <LogIn className="h-4 w-4 inline mr-2" />
+                Login
+              </Link>
             )}
           </nav>
         </div>

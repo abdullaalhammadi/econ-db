@@ -27,3 +27,8 @@ backend/.venv/
 .env
 deploy.sh
 frontend_deploy.sh
+
+# Local LDAP testing
+ldap-test-data/
+docker-compose.ldap-test.yml
+backend/.env.ldap-test

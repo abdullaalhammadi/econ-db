@@ -4,7 +4,6 @@ import Navigation from './components/Navigation';
 import UploadForm from './components/UploadForm';
 import DatasetList from './components/DatasetList';
 import Login from './components/Login';
-import Register from './components/Register';
 import AdminApproval from './components/AdminApproval';
 import UserManagement from './components/UserManagement';
 import AuditLog from './components/AuditLog';
@@ -53,8 +52,7 @@ const App: React.FC = () => {
                 setIsAdmin(false);
               });
             }} /> : <Navigate to="/" />} />
-            <Route path="/register" element={!loggedIn ? <Register /> : <Navigate to="/" />} />
-            
+
             <Route 
               path="/" 
               element={loggedIn ? <DatasetList isAdmin={isAdmin || false} /> : <Navigate to="/login" />}

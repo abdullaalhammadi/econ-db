@@ -1,38 +1,44 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import select, insert
 from structure import users, roles, engine
+from services.ldap_auth import ldap_service, LDAPConnectionError
 
 auth_bp = Blueprint('auth', __name__)
 
-@auth_bp.route('/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
 
-    if not username or not password:
-        return jsonify({'error': 'Username and password are required'}), 400
+def get_or_create_user(ad_user_info: dict) -> tuple:
+    """
+    Get existing user or create new user from AD authentication.
+
+    Returns:
+        tuple: (user_id, is_new_user)
+    """
+    username = ad_user_info['username']
 
     with engine.connect() as conn:
-        # Check if user already exists
+        # Check if user exists
         stmt = select(users).where(users.c.username == username)
         res = conn.execute(stmt)
-        if res.first():
-            return jsonify({'error': 'Username already exists'}), 400
+        existing_user = res.first()
 
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-        
-        # Insert user
+        if existing_user:
+            return existing_user.id, False
+
+        # Auto-provision new user
+        # Password field set to placeholder (AD validates credentials)
         insert_user_stmt = insert(users).values(
             username=username,
-            password=hashed_password
+            password='AD_AUTHENTICATED'
         )
         result = conn.execute(insert_user_stmt)
         user_id = result.inserted_primary_key[0]
-        
-        # Insert default role
+
+        # Insert default 'standard' role
         insert_role_stmt = insert(roles).values(
             id=user_id,
             username=username,
@@ -41,12 +47,13 @@ def register():
         conn.execute(insert_role_stmt)
         conn.commit()
 
-        return jsonify({'message': 'User registered successfully'}), 201
+        return user_id, True
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     from endpoints import User  # Import User class from main file
-    
+
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -54,23 +61,47 @@ def login():
     if not username or not password:
         return jsonify({'error': 'Username and password are required'}), 400
 
-    with engine.connect() as conn:
-        stmt = select(users).where(users.c.username == username)
-        res = conn.execute(stmt)
-        user_data = res.first()
+    try:
+        # Authenticate against Active Directory
+        ad_user = ldap_service.authenticate(username, password)
 
-        if user_data and check_password_hash(user_data.password, password):
-            user = User(id=user_data.id, username=user_data.username)
-            login_user(user)
-            return jsonify({'message': 'Logged in successfully'})
-        
-        return jsonify({'error': 'Invalid username or password'}), 401
+        if ad_user is None:
+            return jsonify({'error': 'Invalid username or password'}), 401
+
+        # Get or create local user record
+        user_id, is_new_user = get_or_create_user(ad_user)
+
+        # Create Flask-Login user and log in
+        user = User(id=user_id, username=ad_user['username'])
+        login_user(user)
+
+        response_data = {'message': 'Logged in successfully'}
+        if is_new_user:
+            response_data['info'] = 'Account created on first login'
+
+        return jsonify(response_data)
+
+    except LDAPConnectionError as e:
+        print(f"LDAP Connection Error: {e}")
+        return jsonify({'error': 'Authentication service unavailable. Please try again later.'}), 503
+
+
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    """
+    Registration is disabled - users are managed through Active Directory.
+    """
+    return jsonify({
+        'error': 'Self-registration is disabled. Please contact your IT administrator for account access.'
+    }), 403
+
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
     return jsonify({'message': 'Logged out successfully'})
+
 
 @auth_bp.route('/status', methods=['GET'])
 def status():
