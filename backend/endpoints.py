@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SECURE'] = False
 
 cors_origins = os.getenv('CORS_ALLOWED_ORIGINS')
 if cors_origins:
