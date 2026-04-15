@@ -40,7 +40,6 @@ def get_or_create_user(ad_user_info: dict) -> tuple:
 
         # Insert default 'standard' role
         insert_role_stmt = insert(roles).values(
-            id=user_id,
             username=username,
             role='standard'
         )

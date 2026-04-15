@@ -53,8 +53,17 @@ def load_user(user_id):
 def is_admin(user_id):
     """Check if user is an administrator"""
     with engine.connect() as conn:
+        # First get the username from users table
+        user_stmt = select(users.c.username).where(users.c.id == user_id)
+        user_res = conn.execute(user_stmt)
+        user = user_res.first()
+
+        if not user:
+            return False
+
+        # Then check if that username has admin role
         stmt = select(roles).where(
-            (roles.c.id == str(user_id)) & 
+            (roles.c.username == user.username) &
             (roles.c.role == 'administrator')
         )
         res = conn.execute(stmt)

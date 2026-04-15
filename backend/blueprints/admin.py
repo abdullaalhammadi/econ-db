@@ -12,8 +12,17 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 def is_admin(user_id):
     """Check if user is an administrator"""
     with engine.connect() as conn:
+        # First get the username from users table
+        user_stmt = select(users.c.username).where(users.c.id == user_id)
+        user_res = conn.execute(user_stmt)
+        user = user_res.first()
+
+        if not user:
+            return False
+
+        # Then check if that username has admin role
         stmt = select(roles).where(
-            (roles.c.id == str(user_id)) & 
+            (roles.c.username == user.username) &
             (roles.c.role == 'administrator')
         )
         res = conn.execute(stmt)
@@ -154,7 +163,7 @@ def get_users():
             users.c.username,
             roles.c.role
         ).select_from(
-            users.join(roles, users.c.id == roles.c.id)
+            users.join(roles, users.c.username == roles.c.username)
         ).order_by(users.c.username)
         
         res = conn.execute(stmt)
@@ -184,23 +193,32 @@ def update_user_role(user_id):
         return jsonify({'error': 'Invalid role. Must be "standard" or "administrator"'}), 400
     
     with engine.connect() as conn:
-        # Check if target user exists and get current role
-        check_stmt = select(roles).where(roles.c.id == user_id)
-        result = conn.execute(check_stmt)
-        target_user = result.first()
-        
-        if not target_user:
+        # First get the username from users table
+        user_stmt = select(users.c.username).where(users.c.id == user_id)
+        user_result = conn.execute(user_stmt)
+        user = user_result.first()
+
+        if not user:
             return jsonify({'error': 'User not found'}), 404
-        
+
+        target_username = user.username
+
+        # Check if target user role exists
+        check_stmt = select(roles).where(roles.c.username == target_username)
+        result = conn.execute(check_stmt)
+        target_role = result.first()
+
+        if not target_role:
+            return jsonify({'error': 'User role not found'}), 404
+
         # Prevent admins from changing other admins' roles
-        if target_user.role == 'administrator' and user_id != current_user.id:
+        if target_role.role == 'administrator' and user_id != current_user.id:
             return jsonify({'error': 'Cannot modify another administrator\'s role'}), 403
-        
-        old_role = target_user.role
-        target_username = target_user.username
-        
+
+        old_role = target_role.role
+
         # Update the role
-        update_stmt = update(roles).where(roles.c.id == user_id).values(role=new_role)
+        update_stmt = update(roles).where(roles.c.username == target_username).values(role=new_role)
         conn.execute(update_stmt)
         
         # Log the action
