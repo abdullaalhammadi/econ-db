@@ -107,3 +107,4 @@ def status():
     if current_user.is_authenticated:
         return jsonify({'logged_in': True, 'user': {'username': current_user.username}})
     return jsonify({'logged_in': False})
+
