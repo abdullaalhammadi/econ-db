@@ -87,7 +87,7 @@ def approve_indicator(indicator_id, version):
         # Log the action
         log_stmt = insert(audit_logs).values(
             id=int(time.time()),
-            timestamp=datetime.now(),
+            event_time=datetime.now(),
             admin_user=current_user.username,
             action_type='indicator_approve',
             target_indicator=indicator_id,
@@ -129,7 +129,7 @@ def reject_indicator(indicator_id, version):
         # Log the action
         log_stmt = insert(audit_logs).values(
             id=int(time.time()),
-            timestamp=datetime.now(),
+            event_time=datetime.now(),
             admin_user=current_user.username,
             action_type='indicator_reject',
             target_indicator=indicator_id,
@@ -224,7 +224,7 @@ def update_user_role(user_id):
         # Log the action
         log_stmt = insert(audit_logs).values(
             id=int(time.time()),
-            timestamp=datetime.now(),
+            event_time=datetime.now(),
             admin_user=current_user.username,
             action_type='role_update',
             target_user=target_username,
@@ -253,7 +253,7 @@ def get_audit_logs():
     
     with engine.connect() as conn:
         # Build base query
-        base_stmt = select(audit_logs).order_by(desc(audit_logs.c.timestamp))
+        base_stmt = select(audit_logs).order_by(desc(audit_logs.c.event_time))
         
         # Add filter if specified
         if action_type:
@@ -276,7 +276,7 @@ def get_audit_logs():
         for row in rows:
             logs.append({
                 'id': row['id'],
-                'timestamp': row['timestamp'].isoformat() if row['timestamp'] else '',
+                'event_time': row['event_time'].isoformat() if row['event_time'] else '',
                 'admin_user': row['admin_user'],
                 'action_type': row['action_type'],
                 'target_user': row['target_user'],

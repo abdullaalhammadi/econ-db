@@ -133,7 +133,7 @@ export async function updateUserRole(userId: number, role: string): Promise<{ me
 export async function getAuditLogs(queryParams?: string): Promise<{
   logs: Array<{
     id: number;
-    timestamp: string;
+    event_time: string;
     admin_user: string;
     action_type: string;
     target_user?: string;

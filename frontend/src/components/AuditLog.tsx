@@ -4,7 +4,7 @@ import { getAuditLogs } from '../utils/api';
 
 interface AuditLogEntry {
   id: number;
-  timestamp: string;
+  event_time: string;
   admin_user: string;
   action_type: string;
   target_user?: string;
@@ -130,8 +130,8 @@ const AuditLog: React.FC = () => {
     </tr>
   );
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
+  const formatevent_time = (event_time: string) => {
+    return new Date(event_time).toLocaleString();
   };
 
   const getActionIcon = (actionType: string) => {
@@ -239,7 +239,7 @@ const AuditLog: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Timestamp
+                      event_time
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Admin User
@@ -267,7 +267,7 @@ const AuditLog: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 text-gray-400 mr-2" />
-                          {formatTimestamp(log.timestamp)}
+                          {formatevent_time(log.event_time)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

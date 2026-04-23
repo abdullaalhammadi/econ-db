@@ -71,7 +71,7 @@ roles = Table(
 audit_logs = Table(
     "audit_logs", metadata_obj,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("timestamp", DateTime, nullable=False),
+    Column("event_time", DateTime, nullable=False),
     Column("admin_user", String(255), nullable=False),
     Column("action_type", String(100), nullable=False),
     Column("target_user", String(255)),

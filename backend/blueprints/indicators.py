@@ -107,7 +107,7 @@ def create_indicator():
         # Log the upload action
         log_stmt = insert(audit_logs).values(
             id=int(time.time()),
-            timestamp=datetime.now(),
+            event_time=datetime.now(),
             admin_user=current_user.username,
             action_type='indicator_upload',
             target_indicator=data['indicator_id'],
@@ -144,7 +144,7 @@ def delete_indicator(indicator_id):
         # Log the deletion action
         log_stmt = insert(audit_logs).values(
             id=int(time.time()),
-            timestamp=datetime.now(),
+            event_time=datetime.now(),
             admin_user=current_user.username,
             action_type='indicator_delete',
             target_indicator=indicator_id,
