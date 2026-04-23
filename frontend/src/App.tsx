@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Navigation from './components/Navigation';
 import UploadForm from './components/UploadForm';
 import DatasetList from './components/DatasetList';
+import DatasetPage from './components/DatasetPage';
 import Login from './components/Login';
 import AdminApproval from './components/AdminApproval';
 import UserManagement from './components/UserManagement';
@@ -53,12 +54,16 @@ const App: React.FC = () => {
               });
             }} /> : <Navigate to="/" />} />
 
-            <Route 
-              path="/" 
+            <Route
+              path="/"
               element={loggedIn ? <DatasetList isAdmin={isAdmin || false} /> : <Navigate to="/login" />}
             />
-            <Route 
-              path="/upload" 
+            <Route
+              path="/datasets/:indicatorId"
+              element={loggedIn ? <DatasetPage /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/upload"
               element={loggedIn ? <UploadForm onUploadSuccess={() => {}} /> : <Navigate to="/login" />}
             />
             <Route 

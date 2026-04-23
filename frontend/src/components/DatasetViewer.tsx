@@ -18,6 +18,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   const [versions, setVersions] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedResourceUrl, setCopiedResourceUrl] = useState(false);
   
   const itemsPerPage = 10;
 
@@ -96,9 +97,10 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
     try {
       // Convert JSON data to CSV
       const csvContent = convertJsonToCsv(data);
-      
-      // Create and download the file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+      // Add UTF-8 BOM for proper Arabic text display in Excel
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -115,7 +117,7 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
   const copyApiUrl = async () => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
     const apiUrl = `${baseUrl}/indicators/${dataset.indicator_id}/versions/${dataset.version}/data`;
-    
+
     try {
       await navigator.clipboard.writeText(apiUrl);
       setCopiedUrl(true);
@@ -131,6 +133,26 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
       document.body.removeChild(textArea);
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 2000);
+    }
+  };
+
+  const copyResourceUrl = async () => {
+    const resourceUrl = `${window.location.origin}/datasets/${dataset.indicator_id}`;
+
+    try {
+      await navigator.clipboard.writeText(resourceUrl);
+      setCopiedResourceUrl(true);
+      setTimeout(() => setCopiedResourceUrl(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+      const textArea = document.createElement('textarea');
+      textArea.value = resourceUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedResourceUrl(true);
+      setTimeout(() => setCopiedResourceUrl(false), 2000);
     }
   };
 
@@ -282,6 +304,22 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
                   <span className="ml-2 text-sm">({data.length} rows)</span>
                 </div>
                 <div className="flex gap-2">
+                  <button
+                    onClick={copyResourceUrl}
+                    className="bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center"
+                  >
+                    {copiedResourceUrl ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Link className="h-4 w-4 mr-2" />
+                        Copy Link
+                      </>
+                    )}
+                  </button>
                   <button
                     onClick={copyApiUrl}
                     className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center"

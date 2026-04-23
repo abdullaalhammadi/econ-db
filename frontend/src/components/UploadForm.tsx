@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Upload, FileText, AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { Dataset, FormErrors } from '../types/Dataset';
 import { saveDataset, getDatasetWithVersions, migrateOldDatasets } from '../utils/storage';
 import { parseCSV, readFileAsText } from '../utils/fileParser';
@@ -11,6 +12,7 @@ interface UploadFormProps {
 }
 
 const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<Omit<Dataset, 'uploadedData' | 'fileName' | 'version' | 'created_at' | 'updated_at'>>({
     indicator_id: '',
     indicator_name_en: '',
@@ -136,9 +138,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-      if (!validTypes.includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
-        setErrors({ ...errors, data: 'Please upload a CSV or Excel file' });
+      if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+        setErrors({ ...errors, data: 'Please upload a CSV file only' });
         return;
       }
       setFormData({ ...formData, data: file });
@@ -253,7 +254,14 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 relative">
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Cancel"
+        >
+          <X className="h-6 w-6" />
+        </button>
         <div className="text-center mb-8">
           <Upload className="h-12 w-12 text-blue-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900">Upload New Dataset</h2>
@@ -488,7 +496,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <input
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv"
                 onChange={handleFileChange}
                 className="hidden"
                 id="file-upload"
@@ -497,9 +505,9 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
                 htmlFor="file-upload"
                 className="cursor-pointer text-blue-600 hover:text-blue-700 font-medium"
               >
-                Click to upload CSV or Excel file
+                Click to upload CSV file
               </label>
-              <p className="text-gray-500 text-sm mt-1">or drag and drop</p>
+              <p className="text-gray-500 text-sm mt-1">Only .csv files are accepted</p>
               {formData.data && (
                 <p className="text-green-600 text-sm mt-2 font-medium">
                   Selected: {formData.data.name}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Eye, Trash2, Calendar, User, FileText, Clock, Grid3X3, List, Filter, X } from 'lucide-react';
 import { Dataset } from '../types/Dataset';
 import { getDatasets, deleteDataset, migrateOldDatasets } from '../utils/storage';
-import DatasetViewer from './DatasetViewer';
 import DomainChip from './DomainChip';
 
 type ViewMode = 'card' | 'list';
@@ -12,10 +12,9 @@ interface DatasetListProps {
 }
 
 const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
+  const navigate = useNavigate();
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
-  const [showViewer, setShowViewer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('card');
@@ -55,8 +54,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
   };
 
   const handleView = (dataset: Dataset) => {
-    setSelectedDataset(dataset);
-    setShowViewer(true);
+    navigate(`/datasets/${dataset.indicator_id}`);
   };
 
 
@@ -71,18 +69,6 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
     
     return matchesSearch && matchesSource && matchesDomain;
   });
-
-  if (showViewer && selectedDataset) {
-    return (
-      <DatasetViewer
-        dataset={selectedDataset}
-        onBack={() => {
-          setShowViewer(false);
-          setSelectedDataset(null);
-        }}
-      />
-    );
-  }
 
   if (loading) {
     return (
