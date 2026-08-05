@@ -1,11 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Eye, Trash2, Calendar, User, FileText, Clock, Grid3X3, List, Filter, X } from 'lucide-react';
+import Fuse from 'fuse.js';
 import { Dataset } from '../types/Dataset';
 import { getDatasets, deleteDataset, migrateOldDatasets } from '../utils/storage';
 import DomainChip from './DomainChip';
+import HighlightedText from './HighlightedText';
+import { getTermVariations } from '../utils/searchSynonyms';
 
 type ViewMode = 'card' | 'list';
+
+type AutocompleteSuggestion = {
+  type: 'history' | 'field';
+  value: string;
+  label: string;
+  field?: string;
+  dataset?: Dataset;
+};
+
+const fieldDisplayNames: Record<string, string> = {
+  'indicator_name_en': 'English Name',
+  'indicator_name_ar': 'Arabic Name',
+  'indicator_id': 'Indicator ID',
+  'added_by': 'Author',
+  'notes': 'Notes',
+};
 
 interface DatasetListProps {
   isAdmin?: boolean;
@@ -13,19 +32,80 @@ interface DatasetListProps {
 
 const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Initialize state from sessionStorage (preserved filters)
   const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const saved = sessionStorage.getItem('datasetList_searchTerm');
+    return saved || '';
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = sessionStorage.getItem('datasetList_viewMode');
+    return (saved as ViewMode) || 'card';
+  });
   const [showSidebar, setShowSidebar] = useState(false);
-  const [sourceFilter, setSourceFilter] = useState<string>('');
-  const [domainFilter, setDomainFilter] = useState<string>('');
+  const [sourceFilter, setSourceFilter] = useState<string>(() => {
+    const saved = sessionStorage.getItem('datasetList_sourceFilter');
+    return saved || '';
+  });
+  const [domainFilter, setDomainFilter] = useState<string>(() => {
+    const saved = sessionStorage.getItem('datasetList_domainFilter');
+    return saved || '';
+  });
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteIndex, setAutocompleteIndex] = useState(0);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dataset_search_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+
+  // Initialize Fuse.js for fuzzy search
+  const fuse = useMemo(() => {
+    const fuseOptions = {
+      keys: [
+        { name: 'indicator_name_en', weight: 0.3 },
+        { name: 'indicator_name_ar', weight: 0.3 },
+        { name: 'indicator_id', weight: 0.2 },
+        { name: 'added_by', weight: 0.1 },
+        { name: 'notes', weight: 0.1 },
+      ],
+      threshold: 0.4,
+      distance: 100,
+      minMatchCharLength: 2,
+      includeScore: true,
+      includeMatches: true,
+      ignoreLocation: true,
+    };
+
+    return new Fuse(datasets, fuseOptions);
+  }, [datasets]);
 
   useEffect(() => {
     migrateOldDatasets();
     loadDatasets();
   }, []);
+
+  // Save filter state to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('datasetList_searchTerm', searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    sessionStorage.setItem('datasetList_sourceFilter', sourceFilter);
+  }, [sourceFilter]);
+
+  useEffect(() => {
+    sessionStorage.setItem('datasetList_domainFilter', domainFilter);
+  }, [domainFilter]);
+
+  useEffect(() => {
+    sessionStorage.setItem('datasetList_viewMode', viewMode);
+  }, [viewMode]);
 
   const loadDatasets = async () => {
     try {
@@ -54,21 +134,154 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
   };
 
   const handleView = (dataset: Dataset) => {
+    // Filter state is already saved to sessionStorage via useEffect
     navigate(`/datasets/${dataset.indicator_id}`);
   };
 
 
-  const filteredDatasets = datasets.filter(dataset => {
-    const matchesSearch = dataset.indicator_name_en.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dataset.indicator_name_ar.includes(searchTerm) ||
-      dataset.indicator_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dataset.added_by.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesSource = !sourceFilter || dataset.source === sourceFilter;
-    const matchesDomain = !domainFilter || dataset.domain === domainFilter;
-    
-    return matchesSearch && matchesSource && matchesDomain;
-  });
+  const filteredDatasets = useMemo(() => {
+    let results = datasets;
+
+    // Apply Fuse.js fuzzy search if search term exists
+    if (searchTerm.trim()) {
+      // Expand search term to include all variations/synonyms
+      const expandedTerms = getTermVariations(searchTerm);
+
+      if (expandedTerms.length > 1) {
+        // Multiple variations found - search with all of them
+        const allResults = new Map<string, Dataset>();
+
+        expandedTerms.forEach(term => {
+          const fuseResults = fuse.search(term);
+          fuseResults.forEach(result => {
+            // Use Map to deduplicate by indicator_id
+            allResults.set(result.item.indicator_id, result.item);
+          });
+        });
+
+        results = Array.from(allResults.values());
+      } else {
+        // No synonyms found, use regular Fuse search
+        const fuseResults = fuse.search(searchTerm);
+        results = fuseResults.map(result => result.item);
+      }
+    }
+
+    // Apply source and domain filters
+    results = results.filter(dataset => {
+      const matchesSource = !sourceFilter || dataset.source === sourceFilter;
+      const matchesDomain = !domainFilter || dataset.domain === domainFilter;
+      return matchesSource && matchesDomain;
+    });
+
+    return results;
+  }, [datasets, searchTerm, sourceFilter, domainFilter, fuse]);
+
+  // Generate autocomplete suggestions
+  const autocompleteSuggestions = useMemo((): AutocompleteSuggestion[] => {
+    if (!searchTerm.trim() || searchTerm.length < 2) {
+      // Show recent searches when no search term
+      return searchHistory.slice(0, 5).map(term => ({
+        type: 'history',
+        value: term,
+        label: term,
+      }));
+    }
+
+    // Get Fuse results for suggestions
+    const results = fuse.search(searchTerm, { limit: 8 });
+
+    const suggestions = results.flatMap(result => {
+      const matches = result.matches || [];
+      return matches.map(match => {
+        const field = match.key || '';
+        const value = match.value || '';
+
+        return {
+          type: 'field' as const,
+          field,
+          value,
+          label: value.length > 50 ? value.substring(0, 50) + '...' : value,
+          dataset: result.item,
+        };
+      });
+    });
+
+    // Deduplicate by value
+    const unique = suggestions.filter((item, index, self) =>
+      index === self.findIndex(t => t.value === item.value)
+    );
+
+    return unique.slice(0, 8);
+  }, [searchTerm, fuse, searchHistory]);
+
+  // Event handlers
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setShowAutocomplete(true);
+    setAutocompleteIndex(0);
+  }, []);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showAutocomplete) return;
+
+    const suggestionsCount = autocompleteSuggestions.length;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setAutocompleteIndex(prev => (prev + 1) % suggestionsCount);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setAutocompleteIndex(prev => (prev - 1 + suggestionsCount) % suggestionsCount);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (suggestionsCount > 0) {
+          selectSuggestion(autocompleteSuggestions[autocompleteIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setShowAutocomplete(false);
+        break;
+    }
+  }, [showAutocomplete, autocompleteSuggestions, autocompleteIndex]);
+
+  const selectSuggestion = useCallback((suggestion: AutocompleteSuggestion) => {
+    setSearchTerm(suggestion.value);
+    setShowAutocomplete(false);
+
+    // Add to search history
+    const newHistory = [suggestion.value, ...searchHistory.filter(h => h !== suggestion.value)].slice(0, 10);
+    setSearchHistory(newHistory);
+    localStorage.setItem('dataset_search_history', JSON.stringify(newHistory));
+  }, [searchHistory]);
+
+  const clearSearch = useCallback(() => {
+    setSearchTerm('');
+    setShowAutocomplete(false);
+    sessionStorage.setItem('datasetList_searchTerm', '');
+    searchInputRef.current?.focus();
+  }, []);
+
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        autocompleteRef.current &&
+        !autocompleteRef.current.contains(event.target as Node) &&
+        !searchInputRef.current?.contains(event.target as Node)
+      ) {
+        setShowAutocomplete(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (loading) {
     return (
@@ -111,14 +324,67 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
       <div className="mb-6">
         <div className="flex items-center gap-4 mb-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 z-10" />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Search datasets by name, ID, or author..."
+              placeholder="Search datasets by name, ID, author, or notes..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+              onFocus={() => setShowAutocomplete(true)}
+              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                title="Clear search"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+
+            {/* Autocomplete Dropdown */}
+            {showAutocomplete && autocompleteSuggestions.length > 0 && (
+              <div
+                ref={autocompleteRef}
+                className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto"
+              >
+                {autocompleteSuggestions.map((suggestion, index) => (
+                  <button
+                    key={`${suggestion.type}-${index}`}
+                    onClick={() => selectSuggestion(suggestion)}
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                      index === autocompleteIndex ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {suggestion.type === 'history' ? (
+                        <>
+                          <Clock className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-700">{suggestion.label}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {suggestion.label}
+                            </div>
+                            {suggestion.field && (
+                              <div className="text-xs text-gray-500">
+                                in {fieldDisplayNames[suggestion.field] || suggestion.field}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-2">
@@ -163,7 +429,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -180,7 +446,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Domain
@@ -202,7 +468,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
                   <option value="Tourism">Tourism</option>
                 </select>
               </div>
-              
+
               {(sourceFilter || domainFilter) && (
                 <button
                   onClick={() => {
@@ -219,18 +485,44 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
         )}
 
           <div className="flex-1">
+            {/* Results Count */}
+            {filteredDatasets.length > 0 && (
+              <div className="mb-4 text-sm text-gray-600">
+                Showing {filteredDatasets.length} of {datasets.length} datasets
+                {searchTerm && ` matching "${searchTerm}"`}
+              </div>
+            )}
+
             {filteredDatasets.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  {datasets.length === 0 ? 'No datasets uploaded yet' : 'No datasets match your search'}
+                  {datasets.length === 0
+                    ? 'No datasets uploaded yet'
+                    : searchTerm
+                      ? `No results found for "${searchTerm}"`
+                      : 'No datasets match your filters'}
                 </h3>
-                <p className="text-gray-500">
-                  {datasets.length === 0 
+                <p className="text-gray-500 mb-4">
+                  {datasets.length === 0
                     ? 'Upload your first dataset to get started'
-                    : 'Try adjusting your search terms'
+                    : searchTerm
+                      ? 'Try using different keywords or check for typos'
+                      : 'Try adjusting your source or domain filters'
                   }
                 </p>
+                {(searchTerm || sourceFilter || domainFilter) && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSourceFilter('');
+                      setDomainFilter('');
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
               </div>
             ) : (
               <div className={viewMode === 'card' ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
@@ -242,6 +534,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
                       onView={handleView}
                       onDelete={handleDelete}
                       isAdmin={isAdmin}
+                      searchTerm={searchTerm}
                     />
                   ))
                 ) : (
@@ -250,6 +543,7 @@ const DatasetList: React.FC<DatasetListProps> = ({ isAdmin = false }) => {
                     onView={handleView}
                     onDelete={handleDelete}
                     isAdmin={isAdmin}
+                    searchTerm={searchTerm}
                   />
                 )}
               </div>
@@ -265,9 +559,10 @@ interface DatasetListViewProps {
   onView: (dataset: Dataset) => void;
   onDelete: (indicatorId: string) => void;
   isAdmin?: boolean;
+  searchTerm?: string;
 }
 
-const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onDelete, isAdmin = false }) => {
+const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onDelete, isAdmin = false, searchTerm = '' }) => {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -303,10 +598,10 @@ const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onD
                 <td className="px-6 py-4">
                   <div>
                     <div className="text-sm font-medium text-gray-900">
-                      {dataset.indicator_name_en}
+                      <HighlightedText text={dataset.indicator_name_en} highlight={searchTerm} />
                     </div>
                     <div className="text-sm text-gray-600" dir="rtl">
-                      {dataset.indicator_name_ar}
+                      <HighlightedText text={dataset.indicator_name_ar} highlight={searchTerm} />
                     </div>
                   </div>
                 </td>
@@ -361,9 +656,10 @@ interface DatasetCardProps {
   onView: (dataset: Dataset) => void;
   onDelete: (indicatorId: string) => void;
   isAdmin?: boolean;
+  searchTerm?: string;
 }
 
-const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, isAdmin = false }) => {
+const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, isAdmin = false, searchTerm = '' }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300">
@@ -371,10 +667,10 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, is
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">
-              {dataset.indicator_name_en}
+              <HighlightedText text={dataset.indicator_name_en} highlight={searchTerm} />
             </h3>
             <p className="text-sm text-gray-600 mb-2" dir="rtl">
-              {dataset.indicator_name_ar}
+              <HighlightedText text={dataset.indicator_name_ar} highlight={searchTerm} />
             </p>
             <div className="flex items-center gap-2 mb-2">
               <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">

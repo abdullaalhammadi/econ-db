@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Download, FileText, User, Calendar, MessageSquare, Clock, GitBranch, ChevronDown, ChevronUp, Link, Check } from 'lucide-react';
+import { ArrowLeft, Download, FileText, User, Calendar, MessageSquare, Clock, GitBranch, ChevronDown, ChevronUp, Link, Check, Database, Globe, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { Dataset } from '../types/Dataset';
 import { getDatasetWithVersions, getDatasetVersion } from '../utils/storage';
 import { DataRow } from '../types/Dataset';
@@ -272,6 +272,81 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ dataset: initialDataset, 
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="flex items-center text-gray-600">
+              <Database className="h-5 w-5 mr-2" />
+              <div>
+                <p className="text-sm font-medium">Source</p>
+                <p className="font-semibold">{dataset.source || 'Not specified'}</p>
+              </div>
+            </div>
+            <div className="flex items-center text-gray-600">
+              <Globe className="h-5 w-5 mr-2" />
+              <div>
+                <p className="text-sm font-medium">Domain</p>
+                <p className="font-semibold">{dataset.domain || 'Not specified'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Approval Status Section */}
+          {dataset.approval_status && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-sm font-medium text-gray-600">Status:</p>
+                {dataset.approval_status === 'approved' && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <CheckCircle className="h-4 w-4 mr-1.5" />
+                    Approved
+                  </span>
+                )}
+                {dataset.approval_status === 'Pending Review' && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                    <AlertCircle className="h-4 w-4 mr-1.5" />
+                    Pending Review
+                  </span>
+                )}
+                {dataset.approval_status === 'rejected' && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                    <XCircle className="h-4 w-4 mr-1.5" />
+                    Rejected
+                  </span>
+                )}
+              </div>
+
+              {dataset.approved_by && (
+                <div className="flex items-center text-sm text-gray-600 mb-2">
+                  <User className="h-4 w-4 mr-2" />
+                  <span>
+                    {dataset.approval_status === 'approved' ? 'Approved' : 'Reviewed'} by: {dataset.approved_by}
+                  </span>
+                </div>
+              )}
+
+              {dataset.approval_date && (
+                <div className="flex items-center text-sm text-gray-600 mb-2">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <span>
+                    {dataset.approval_status === 'approved' ? 'Approved' : 'Reviewed'} on:{' '}
+                    {new Date(dataset.approval_date).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+
+              {dataset.rejection_reason && (
+                <div className="mt-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start">
+                    <XCircle className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-red-900 mb-1">Rejection Reason:</p>
+                      <p className="text-sm text-red-800">{dataset.rejection_reason}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div className="flex items-start text-gray-600">

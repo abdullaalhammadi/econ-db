@@ -15,7 +15,11 @@ const convertApiDataset = (apiDataset: Dataset): Dataset => ({
   updated_at: apiDataset.updated_at,
   uploadedData: apiDataset.uploadedData,
   source: apiDataset.source,
-  domain: apiDataset.domain
+  domain: apiDataset.domain,
+  approval_status: apiDataset.approval_status,
+  approved_by: apiDataset.approved_by,
+  approval_date: apiDataset.approval_date,
+  rejection_reason: apiDataset.rejection_reason
 });
 
 export const saveDataset = async (dataset: Dataset): Promise<void> => {
@@ -61,8 +65,8 @@ export const deleteDataset = async (indicatorId: string): Promise<void> => {
 
 export const getDatasetById = async (indicatorId: string): Promise<Dataset | undefined> => {
   try {
-    const datasets = await getDatasets();
-    return datasets.find(d => d.indicator_id === indicatorId);
+    const dataset = await apiClient.getIndicatorById(indicatorId);
+    return convertApiDataset(dataset);
   } catch (error) {
     console.error('Failed to fetch dataset:', error);
     return undefined;

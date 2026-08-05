@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Dataset } from '../types/Dataset';
-import { getDatasets } from '../utils/storage';
+import { getDatasetById } from '../utils/storage';
 import DatasetViewer from './DatasetViewer';
 import { FileText } from 'lucide-react';
 
@@ -22,8 +22,7 @@ const DatasetPage: React.FC = () => {
 
       try {
         setLoading(true);
-        const datasets = await getDatasets();
-        const found = datasets.find(d => d.indicator_id === indicatorId);
+        const found = await getDatasetById(indicatorId);
 
         if (found) {
           setDataset(found);

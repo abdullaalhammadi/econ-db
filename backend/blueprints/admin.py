@@ -113,19 +113,20 @@ def reject_indicator(indicator_id, version):
     rejection_reason = data.get('reason', '')
     
     with engine.connect() as conn:
-        # First check if record exists
-        check_stmt = select(indicators).where(
+        # Update status to 'rejected' instead of deleting
+        # This preserves the submission history and allows users to see rejection reasons
+        stmt = update(indicators).where(
             (indicators.c.indicator_id == indicator_id) &
             (indicators.c.version_number == version)
+        ).values(
+            approval_status='rejected',
+            approved_by=current_user.username,  # Track who rejected it
+            approval_date=datetime.now(),        # Track when it was rejected
+            rejection_reason=rejection_reason
         )
-    
-        # Proceed with update
-        stmt = delete(indicators).where(
-            (indicators.c.indicator_id == indicator_id) &
-            (indicators.c.version_number == version))
-        
+
         result = conn.execute(stmt)
-        
+
         # Log the action
         log_stmt = insert(audit_logs).values(
             id=int(time.time()),
@@ -137,7 +138,7 @@ def reject_indicator(indicator_id, version):
         )
         conn.execute(log_stmt)
         conn.commit()
-        
+
         if result.rowcount > 0:
             return jsonify({'message': 'Indicator rejected successfully'})
         else:

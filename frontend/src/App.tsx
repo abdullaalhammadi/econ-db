@@ -5,6 +5,7 @@ import UploadForm from './components/UploadForm';
 import DatasetList from './components/DatasetList';
 import DatasetPage from './components/DatasetPage';
 import Login from './components/Login';
+import MySubmissions from './components/MySubmissions';
 import AdminApproval from './components/AdminApproval';
 import UserManagement from './components/UserManagement';
 import AuditLog from './components/AuditLog';
@@ -66,7 +67,11 @@ const App: React.FC = () => {
               path="/upload"
               element={loggedIn ? <UploadForm onUploadSuccess={() => {}} /> : <Navigate to="/login" />}
             />
-            <Route 
+            <Route
+              path="/my-submissions"
+              element={loggedIn ? <MySubmissions /> : <Navigate to="/login" />}
+            />
+            <Route
               path="/admin" 
               element={loggedIn && isAdmin ? <AdminApproval /> : <Navigate to="/" />}
             />

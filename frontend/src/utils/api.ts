@@ -41,6 +41,10 @@ export async function getLatestIndicatorData(indicatorId: string): Promise<Datas
   return request<Dataset>(`/indicators/${indicatorId}/latest`);
 }
 
+export async function getIndicatorById(indicatorId: string): Promise<Dataset> {
+  return request<Dataset>(`/indicators/${indicatorId}`);
+}
+
 export async function createDataset(dataset: Omit<Dataset, 'version' | 'created_at' | 'updated_at'>): Promise<{ message: string; version: number; is_new_version: boolean }> {
   return request('/indicators', {
     method: 'POST',
@@ -81,14 +85,8 @@ export async function getStatus(): Promise<{ logged_in: boolean; user?: { userna
 
 export async function getNextIndicatorId(): Promise<string> {
   try {
-    const datasets = await getDatasets();
-    const maxId = datasets.length > 0 
-      ? Math.max(...datasets.map(d => {
-          const match = d.indicator_id.match(/^IND(\d+)$/);
-          return match ? parseInt(match[1]) : 0;
-        }))
-      : 0;
-    return `IND${String(maxId + 1).padStart(3, '0')}`;
+    const response = await request<{ next_id: string }>('/indicators/next-id');
+    return response.next_id;
   } catch (error) {
     console.error('Failed to generate next indicator ID:', error);
     return 'IND001';
@@ -114,6 +112,17 @@ export async function rejectIndicator(indicatorId: string, version: number, reas
   return request(`/admin/reject/${indicatorId}/${version}`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
+  });
+}
+
+// My Submissions methods
+export async function getMySubmissions(): Promise<Dataset[]> {
+  return request('/indicators/my-submissions');
+}
+
+export async function deleteMySubmission(indicatorId: string, version: number): Promise<{ message: string }> {
+  return request(`/indicators/${indicatorId}/versions/${version}`, {
+    method: 'DELETE',
   });
 }
 

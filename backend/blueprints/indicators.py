@@ -62,7 +62,11 @@ def get_indicators():
                 'version': row['version_number'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
-                'uploadedData': json.loads(row['data']) if row['data'] else []
+                'uploadedData': json.loads(row['data']) if row['data'] else [],
+                'approval_status': row['approval_status'],
+                'approved_by': row['approved_by'],
+                'approval_date': row['approval_date'].isoformat() if row['approval_date'] else None,
+                'rejection_reason': row['rejection_reason']
             }
             datasets.append(dataset)
         
@@ -198,7 +202,11 @@ def get_indicator_versions(indicator_id):
                 'notes': row['notes'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
-                'uploadedData': json.loads(row['data']) if row['data'] else []
+                'uploadedData': json.loads(row['data']) if row['data'] else [],
+                'approval_status': row['approval_status'],
+                'approved_by': row['approved_by'],
+                'approval_date': row['approval_date'].isoformat() if row['approval_date'] else None,
+                'rejection_reason': row['rejection_reason']
             }
             versions.append(version)
         
@@ -230,7 +238,11 @@ def get_indicator_version(indicator_id, version):
                 'version': row['version_number'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
-                'uploadedData': json.loads(row['data']) if row['data'] else []
+                'uploadedData': json.loads(row['data']) if row['data'] else [],
+                'approval_status': row['approval_status'],
+                'approved_by': row['approved_by'],
+                'approval_date': row['approval_date'].isoformat() if row['approval_date'] else None,
+                'rejection_reason': row['rejection_reason']
             }
             return jsonify(dataset)
         else:
@@ -262,7 +274,11 @@ def get_latest_indicator(indicator_id):
                 'version': row['version_number'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
-                'uploadedData': json.loads(row['data']) if row['data'] else []
+                'uploadedData': json.loads(row['data']) if row['data'] else [],
+                'approval_status': row['approval_status'],
+                'approved_by': row['approved_by'],
+                'approval_date': row['approval_date'].isoformat() if row['approval_date'] else None,
+                'rejection_reason': row['rejection_reason']
             }
             return jsonify(dataset)
         else:
@@ -287,3 +303,154 @@ def get_indicator_version_data(indicator_id, version):
                 return jsonify({'error': 'Invalid JSON format in data field'}), 500
         else:
             return jsonify([])  # Return empty array if no data or version not found
+
+
+@indicators_bp.route('/<string:indicator_id>', methods=['GET'])
+@login_required
+def get_indicator_by_id(indicator_id):
+    """Get the latest version of an indicator regardless of approval status (for viewing submissions)"""
+    with engine.connect() as conn:
+        # Get the latest version of the indicator (any status)
+        stmt = select(indicators).where(
+            indicators.c.indicator_id == indicator_id
+        ).order_by(desc(indicators.c.version_number)).limit(1)
+
+        res = conn.execute(stmt)
+        row = res.mappings().first()
+
+        if row:
+            dataset = {
+                'indicator_id': row['indicator_id'],
+                'indicator_name_en': row['indicator_name_en'],
+                'indicator_name_ar': row['indicator_name_ar'],
+                'added_by': row['added_by'],
+                'source': row['source'],
+                'domain': row['domain'],
+                'qc_by': row['qc_by'],
+                'added_date': row['added_date'].isoformat() if row['added_date'] else '',
+                'notes': row['notes'],
+                'version': row['version_number'],
+                'created_at': row['added_date'].isoformat() if row['added_date'] else '',
+                'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
+                'uploadedData': json.loads(row['data']) if row['data'] else [],
+                'approval_status': row['approval_status'],
+                'approved_by': row['approved_by'],
+                'approval_date': row['approval_date'].isoformat() if row['approval_date'] else None,
+                'rejection_reason': row['rejection_reason']
+            }
+            return jsonify(dataset)
+        else:
+            return jsonify({'error': 'Indicator not found'}), 404
+
+@indicators_bp.route('/my-submissions', methods=['GET'])
+@login_required
+def get_my_submissions():
+    """Get all indicators submitted by the current user (all statuses, all versions)"""
+    with engine.connect() as conn:
+        # Get all indicators where added_by = current_user.username
+        # Include ALL statuses (Pending Review, approved, rejected)
+        stmt = select(indicators).where(
+            indicators.c.added_by == current_user.username
+        ).order_by(desc(indicators.c.added_date))
+
+        res = conn.execute(stmt)
+        rows = res.mappings().all()
+
+        # Convert to frontend format
+        submissions = []
+        for row in rows:
+            submission = {
+                'indicator_id': row['indicator_id'],
+                'version_number': row['version_number'],
+                'indicator_name_en': row['indicator_name_en'],
+                'indicator_name_ar': row['indicator_name_ar'],
+                'added_by': row['added_by'],
+                'source': row['source'],
+                'domain': row['domain'],
+                'qc_by': row['qc_by'],
+                'added_date': row['added_date'].isoformat() if row['added_date'] else '',
+                'notes': row['notes'],
+                'version': row['version_number'],
+                'approval_status': row['approval_status'],
+                'approved_by': row['approved_by'],
+                'approval_date': row['approval_date'].isoformat() if row['approval_date'] else None,
+                'rejection_reason': row['rejection_reason'],
+                'created_at': row['added_date'].isoformat() if row['added_date'] else '',
+                'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
+                'uploadedData': json.loads(row['data']) if row['data'] else [],
+                'fileName': ''  # Not stored in DB, keep empty
+            }
+            submissions.append(submission)
+
+        return jsonify(submissions)
+
+
+@indicators_bp.route('/<string:indicator_id>/versions/<int:version>', methods=['DELETE'])
+@login_required
+def delete_my_submission(indicator_id, version):
+    """Delete a pending submission (user can only delete their own pending submissions)"""
+    with engine.connect() as conn:
+        # First check if the submission exists and belongs to the current user
+        check_stmt = select(indicators).where(
+            (indicators.c.indicator_id == indicator_id) &
+            (indicators.c.version_number == version)
+        )
+        check_result = conn.execute(check_stmt)
+        submission = check_result.mappings().first()
+
+        if not submission:
+            return jsonify({'error': 'Submission not found'}), 404
+
+        # Check if the submission belongs to the current user
+        if submission['added_by'] != current_user.username:
+            return jsonify({'error': 'You can only delete your own submissions'}), 403
+
+        # Check if the submission is still pending
+        if submission['approval_status'] != 'Pending Review':
+            return jsonify({'error': 'You can only delete pending submissions'}), 403
+
+        # Delete the submission
+        delete_stmt = delete(indicators).where(
+            (indicators.c.indicator_id == indicator_id) &
+            (indicators.c.version_number == version)
+        )
+        result = conn.execute(delete_stmt)
+
+        # Log the deletion
+        log_stmt = insert(audit_logs).values(
+            id=int(time.time()),
+            event_time=datetime.now(),
+            admin_user=current_user.username,
+            action_type='submission_delete',
+            target_indicator=indicator_id,
+            details=f'User deleted their pending submission: {indicator_id} version {version}'
+        )
+        conn.execute(log_stmt)
+        conn.commit()
+
+        return jsonify({'message': 'Submission deleted successfully'})
+
+@indicators_bp.route('/next-id', methods=['GET'])
+@login_required
+def get_next_indicator_id():
+    """Get the next available indicator ID (checks ALL indicators regardless of status)"""
+    with engine.connect() as conn:
+        # Get all indicator IDs that match the pattern INDxxx
+        stmt = select(indicators.c.indicator_id).distinct()
+        res = conn.execute(stmt)
+        all_ids = [row.indicator_id for row in res]
+
+        # Extract numeric parts and find the maximum
+        max_num = 0
+        for indicator_id in all_ids:
+            # Match pattern like IND001, IND002, etc.
+            import re
+            match = re.match(r'^IND(\d+)$', indicator_id)
+            if match:
+                num = int(match.group(1))
+                if num > max_num:
+                    max_num = num
+
+        # Return next ID
+        next_id = f'IND{str(max_num + 1).zfill(3)}'
+        return jsonify({'next_id': next_id})
