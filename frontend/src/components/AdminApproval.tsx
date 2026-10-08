@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Calendar, User, FileText, RefreshCw, Eye, X } from 'lucide-react';
+import { CheckCircle, XCircle, Calendar, User, FileText, RefreshCw, Eye, X, Database } from 'lucide-react';
 import { getPendingApprovals, approveIndicator, rejectIndicator } from '../utils/api';
 import { Dataset } from '../types/Dataset';
 
@@ -170,12 +170,34 @@ const AdminApproval: React.FC = () => {
                           Version {(indicator as any).version_number}
                         </span>
                       </div>
+                      {indicator.source && (
+                        <div className="flex items-center">
+                          <Database className="h-4 w-4 mr-2" />
+                          <span>Source: {indicator.source}</span>
+                        </div>
+                      )}
+                      {indicator.domain && (
+                        <div className="flex items-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {indicator.domain}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {indicator.notes && (
                       <div className="mb-4">
                         <h5 className="font-medium text-gray-900 mb-1">Notes:</h5>
                         <p className="text-gray-700 text-sm">{indicator.notes}</p>
+                      </div>
+                    )}
+
+                    {indicator.version_notes && (
+                      <div className="mb-4">
+                        <h5 className="font-medium text-gray-900 mb-1">Version Notes:</h5>
+                        <p className="text-blue-700 text-sm italic bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          {indicator.version_notes}
+                        </p>
                       </div>
                     )}
 

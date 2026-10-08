@@ -10,6 +10,7 @@ const convertApiDataset = (apiDataset: Dataset): Dataset => ({
   qc_by: apiDataset.qc_by,
   added_date: apiDataset.added_date,
   notes: apiDataset.notes,
+  version_notes: apiDataset.version_notes,
   version: apiDataset.version,
   created_at: apiDataset.created_at,
   updated_at: apiDataset.updated_at,
@@ -34,9 +35,10 @@ export const saveDataset = async (dataset: Dataset): Promise<void> => {
       qc_by: dataset.qc_by,
       added_date: dataset.added_date,
       notes: dataset.notes,
+      version_notes: dataset.version_notes,
       uploadedData: dataset.uploadedData || [],
     });
-    
+
     console.log(result.message, `Version: ${result.version}`);
   } catch (error) {
     console.error('Failed to save dataset:', error);

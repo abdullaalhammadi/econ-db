@@ -170,6 +170,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
         uploadedData,
         fileName: formData.data?.name,
         version: 1, // Will be overridden by backend
+        version_notes: versionNotes,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

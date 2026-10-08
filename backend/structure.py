@@ -41,6 +41,7 @@ indicators = Table(
     Column("qc_by", String(100)),
     Column("added_date", DateTime),
     Column("notes", Text),
+    Column("version_notes", Text),
     Column("source", String(255)),
     Column("domain", String(255)),
     Column("data", Text),  # JSON string of the uploaded data

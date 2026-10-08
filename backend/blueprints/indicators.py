@@ -59,6 +59,7 @@ def get_indicators():
                 'qc_by': row['qc_by'],
                 'added_date': row['added_date'].isoformat() if row['added_date'] else '',
                 'notes': row['notes'],
+                'version_notes': row['version_notes'],
                 'version': row['version_number'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
@@ -102,6 +103,7 @@ def create_indicator():
             qc_by=data['qc_by'],
             added_date=datetime.fromisoformat(data['added_date']),
             notes=data['notes'],
+            version_notes=data.get('version_notes', ''),
             data=json.dumps(data['uploadedData'], ensure_ascii=False),
             approval_status='Pending Review'
         )
@@ -200,6 +202,7 @@ def get_indicator_versions(indicator_id):
                 'qc_by': row['qc_by'],
                 'added_date': row['added_date'].isoformat() if row['added_date'] else '',
                 'notes': row['notes'],
+                'version_notes': row['version_notes'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'uploadedData': json.loads(row['data']) if row['data'] else [],
@@ -235,6 +238,7 @@ def get_indicator_version(indicator_id, version):
                 'qc_by': row['qc_by'],
                 'added_date': row['added_date'].isoformat() if row['added_date'] else '',
                 'notes': row['notes'],
+                'version_notes': row['version_notes'],
                 'version': row['version_number'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
@@ -256,10 +260,10 @@ def get_latest_indicator(indicator_id):
             (indicators.c.indicator_id == indicator_id) &
             (indicators.c.approval_status == 'approved')
         ).order_by(desc(indicators.c.version_number)).limit(1)
-        
+
         res = conn.execute(stmt)
         row = res.mappings().first()
-        
+
         if row:
             dataset = {
                 'indicator_id': row['indicator_id'],
@@ -271,6 +275,7 @@ def get_latest_indicator(indicator_id):
                 'qc_by': row['qc_by'],
                 'added_date': row['added_date'].isoformat() if row['added_date'] else '',
                 'notes': row['notes'],
+                'version_notes': row['version_notes'],
                 'version': row['version_number'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
@@ -329,6 +334,7 @@ def get_indicator_by_id(indicator_id):
                 'qc_by': row['qc_by'],
                 'added_date': row['added_date'].isoformat() if row['added_date'] else '',
                 'notes': row['notes'],
+                'version_notes': row['version_notes'],
                 'version': row['version_number'],
                 'created_at': row['added_date'].isoformat() if row['added_date'] else '',
                 'updated_at': row['added_date'].isoformat() if row['added_date'] else '',
@@ -370,6 +376,7 @@ def get_my_submissions():
                 'qc_by': row['qc_by'],
                 'added_date': row['added_date'].isoformat() if row['added_date'] else '',
                 'notes': row['notes'],
+                'version_notes': row['version_notes'],
                 'version': row['version_number'],
                 'approval_status': row['approval_status'],
                 'approved_by': row['approved_by'],

@@ -56,6 +56,7 @@ def get_pending_approvals():
                 'qc_by': row['qc_by'],
                 'added_date': row['added_date'].isoformat() if row['added_date'] else '',
                 'notes': row['notes'],
+                'version_notes': row['version_notes'],
                 'approval_status': row['approval_status'],
                 'uploadedData': json.loads(row['data']) if row['data'] else []
             }
