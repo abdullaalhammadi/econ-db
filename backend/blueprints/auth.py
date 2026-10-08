@@ -85,16 +85,6 @@ def login():
         return jsonify({'error': 'Authentication service unavailable. Please try again later.'}), 503
 
 
-@auth_bp.route('/register', methods=['POST'])
-def register():
-    """
-    Registration is disabled - users are managed through Active Directory.
-    """
-    return jsonify({
-        'error': 'Self-registration is disabled. Please contact your IT administrator for account access.'
-    }), 403
-
-
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():

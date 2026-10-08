@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Eye, Trash2, Calendar, User, FileText, Clock, Grid3X3, List, Filter, X } from 'lucide-react';
+import { Search, Eye, Trash2, Calendar, User, FileText, Clock, Grid3X3, List, Filter, X, Database } from 'lucide-react';
 import Fuse from 'fuse.js';
 import { Dataset } from '../types/Dataset';
 import { getDatasets, deleteDataset, migrateOldDatasets } from '../utils/storage';
@@ -576,6 +576,9 @@ const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onD
                 ID
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Source
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Domain
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -609,6 +612,9 @@ const DatasetListView: React.FC<DatasetListViewProps> = ({ datasets, onView, onD
                   <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                     {dataset.indicator_id}
                   </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {dataset.source || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <DomainChip domain={dataset.domain || ''} size="sm" />
@@ -685,6 +691,12 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onView, onDelete, is
         </div>
 
         <div className="space-y-2 mb-4">
+          {dataset.source && (
+            <div className="flex items-center text-sm text-gray-600">
+              <Database className="h-4 w-4 mr-2" />
+              <span>Source: {dataset.source}</span>
+            </div>
+          )}
           <div className="flex items-center text-sm text-gray-600">
             <User className="h-4 w-4 mr-2" />
             <span>Added by: {dataset.added_by}</span>

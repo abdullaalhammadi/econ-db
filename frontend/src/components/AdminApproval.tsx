@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Calendar, User, FileText, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, Calendar, User, FileText, RefreshCw, Eye, X } from 'lucide-react';
 import { getPendingApprovals, approveIndicator, rejectIndicator } from '../utils/api';
 import { Dataset } from '../types/Dataset';
 
@@ -10,6 +10,8 @@ const AdminApproval: React.FC = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [showDatasetModal, setShowDatasetModal] = useState(false);
+  const [datasetToView, setDatasetToView] = useState<Dataset | null>(null);
 
   useEffect(() => {
     fetchPendingIndicators();
@@ -94,6 +96,11 @@ const AdminApproval: React.FC = () => {
     setShowRejectModal(true);
   };
 
+  const openDatasetModal = (indicator: Dataset) => {
+    setDatasetToView(indicator);
+    setShowDatasetModal(true);
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -173,7 +180,18 @@ const AdminApproval: React.FC = () => {
                     )}
 
                     <div className="mb-4">
-                      <h5 className="font-medium text-gray-900 mb-2">Data Preview:</h5>
+                      <div className="flex justify-between items-center mb-2">
+                        <h5 className="font-medium text-gray-900">Data Preview:</h5>
+                        {indicator.uploadedData && indicator.uploadedData.length > 0 && (
+                          <button
+                            onClick={() => openDatasetModal(indicator)}
+                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Full Dataset ({indicator.uploadedData.length} rows)
+                          </button>
+                        )}
+                      </div>
                       {indicator.uploadedData && indicator.uploadedData.length > 0 ? (
                         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                           <div className="overflow-x-auto max-h-64">
@@ -285,6 +303,84 @@ const AdminApproval: React.FC = () => {
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Dataset Modal */}
+      {showDatasetModal && datasetToView && datasetToView.uploadedData && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-4 mx-auto p-5 border max-w-7xl shadow-lg rounded-md bg-white mb-4">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Full Dataset: {datasetToView.indicator_name_en}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {datasetToView.indicator_id} • {datasetToView.uploadedData.length} total rows
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDatasetModal(false);
+                  setDatasetToView(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                        #
+                      </th>
+                      {Object.keys(datasetToView.uploadedData[0]).map((column, index) => (
+                        <th
+                          key={index}
+                          className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
+                        >
+                          {column}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {datasetToView.uploadedData.map((row, rowIndex) => (
+                      <tr key={rowIndex} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 font-medium">
+                          {rowIndex + 1}
+                        </td>
+                        {Object.keys(datasetToView.uploadedData![0]).map((column, colIndex) => (
+                          <td
+                            key={colIndex}
+                            className="px-3 py-2 whitespace-nowrap text-xs text-gray-900"
+                          >
+                            {row[column] || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowDatasetModal(false);
+                  setDatasetToView(null);
+                }}
+                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
